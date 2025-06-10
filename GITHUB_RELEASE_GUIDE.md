@@ -1,6 +1,6 @@
-# GitHub Release 发布指南
+# GitHub 自动打包与发布指南
 
-完成代码推送后，您可以使用两种方式创建Release版本：通过GitHub网页手动创建，或使用配置好的GitHub Actions自动创建。
+本项目已配置GitHub Actions自动化工作流，可以在每次代码提交后自动打包扩展并更新Release。
 
 ## 1. 创建GitHub仓库
 1. 登录您的GitHub账户
@@ -12,58 +12,59 @@
 7. 点击"Create repository"
 
 ## 2. 推送代码到GitHub
-1. 编辑`github-setup.sh`文件，将`YOUR_USERNAME`替换为您的GitHub用户名
-2. 执行脚本：`./github-setup.sh`
-3. 如果使用HTTPS方式，可能需要输入您的GitHub用户名和密码
-4. 如果使用SSH方式，确保已经设置了SSH密钥
-
-## 3. 自动创建Release版本（推荐）
-该项目已配置GitHub Actions自动化工作流，可以自动打包扩展并创建Release。
-
-1. 创建并推送一个带版本号的标签：
+1. 设置远程仓库：
    ```bash
-   git tag v4.2
-   git push origin v4.2
+   git remote add origin https://github.com/你的用户名/web-ai-transcriber.git
+   ```
+2. 推送代码：
+   ```bash
+   git push -u origin master
    ```
 
-2. 推送标签后，GitHub Actions会自动执行以下操作：
+## 3. 自动打包流程
+一旦代码推送到GitHub，自动打包流程会立即启动：
+
+1. GitHub Actions会自动执行以下操作：
    - 打包扩展文件为zip格式
-   - 创建新的Release版本
-   - 将zip文件上传到Release
-   - 使用RELEASE_NOTES.md的内容作为描述
+   - 上传打包文件作为构建产物(Artifact)
+   - 创建或更新名为"latest"的Release
+   - 将zip文件附加到Release中
 
-3. 自动化过程完成后，您可以在GitHub仓库的"Releases"部分查看结果
+2. 自动化过程完成后，您可以在以下位置获取打包文件：
+   - GitHub仓库的"Actions"标签页中，查看最新的工作流运行记录
+   - "Artifacts"部分下载构建产物
+   - 或在"Releases"部分下载最新版本
 
-## 4. 手动创建Release版本（备选方案）
-如果您希望手动控制Release过程，可以按照以下步骤操作：
+## 4. 查看构建结果
+1. 在GitHub仓库页面，点击"Actions"标签
+2. 查看最新的工作流运行状态
+3. 如果构建成功，会显示绿色的对勾标记
+4. 点击进入可以查看详细的构建日志
 
-1. 在GitHub仓库页面，点击"Releases"（在右侧导航栏）
-2. 点击"Create a new release"
-3. 在"Tag version"中输入`v4.2`
-4. 在"Release title"中输入"网页 AI 转写器 v4.2"
-5. 在描述框中复制粘贴`RELEASE_NOTES.md`的内容
-6. 点击"Attach binaries"上传`网页AI转写器_v4.2.zip`文件
-7. 选择"This is a pre-release"如果这是测试版本
-8. 点击"Publish release"完成发布
+## 5. 下载构建产物
+方法一：从Actions下载
+1. 在工作流运行详情页面
+2. 滚动到底部的"Artifacts"部分
+3. 点击"extension-package"下载zip文件
 
-## 5. 验证Release
-1. 发布完成后，您可以在Releases页面看到新创建的版本
-2. 确认下载链接是否可用
-3. 验证描述和附件是否正确显示
+方法二：从Releases下载
+1. 在GitHub仓库页面，点击"Releases"
+2. 找到"最新自动构建"版本
+3. 下载附加的zip文件
 
-## 6. 分享Release链接
-发布完成后，您可以分享Release页面的链接，用户可以直接从GitHub下载您的扩展。
+## 6. 发布到Chrome商店
+1. 登录[Chrome开发者控制台](https://chrome.google.com/webstore/devconsole/)
+2. 点击"添加新项目"
+3. 上传从GitHub下载的zip包
+4. 填写商店页面信息，可参考`STORE_DESCRIPTION.txt`中的内容
+5. 提交审核
 
-链接格式通常为：`https://github.com/[用户名]/web-ai-transcriber/releases/tag/v4.2`
+## 7. 手动创建版本发布（可选）
+如果需要创建特定版本的发布，可以手动操作：
 
-## 7. 修改和更新
-如果需要更新扩展，请修改代码后：
-
-1. 提交更改：`git commit -am "更新说明"`
-2. 增加版本号并创建新标签：`git tag v4.3`
-3. 推送代码和标签：
-   ```bash
-   git push origin master
-   git push origin v4.3
-   ```
-4. GitHub Actions会自动为新版本创建Release 
+1. 在GitHub仓库页面，点击"Releases"
+2. 点击"Draft a new release"
+3. 创建新标签，如`v1.0.0`
+4. 填写发布标题和描述
+5. 上传构建产物
+6. 点击"Publish release" 
