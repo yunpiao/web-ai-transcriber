@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "网页 AI 转写器",
+  "version": "4.2",
+  "description": "通过右键菜单或点击扩展图标，使用AI服务转写和优化页面文本。",
+  "options_page": "options.html",
+  "action": {
+    "default_title": "智能搜索",
+    "default_icon": {
+      "16": "icons/icon16.webp",
+      "32": "icons/icon32.webp",
+      "48": "icons/icon48.webp",
+      "128": "icons/icon128.webp"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.webp",
+    "32": "icons/icon32.webp",
+    "48": "icons/icon48.webp",
+    "128": "icons/icon128.webp"
+  },
+  "permissions": [
+    "tabs",
+    "scripting",
+    "contextMenus",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
