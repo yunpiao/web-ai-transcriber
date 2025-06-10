@@ -1,9 +1,10 @@
-name: Build and Release
+name: Build and Package
 
 on:
   push:
-    tags:
-      - 'v*' # 当推送带v前缀的标签时触发，例如v4.2
+    branches:
+      - master  # 每次提交到master分支时触发
+      - main    # 同时支持main分支
 
 # 添加明确的权限声明
 permissions:
@@ -19,9 +20,8 @@ jobs:
         
       - name: Set up environment
         run: |
-          echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-          echo "ZIP_NAME=网页AI转写器_${GITHUB_REF#refs/tags/v}.zip" >> $GITHUB_ENV
+          echo "TIMESTAMP=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
+          echo "ZIP_NAME=网页AI转写器_自动构建_${{ github.sha | slice: 0, 7 }}_$(date +'%Y%m%d').zip" >> $GITHUB_ENV
       
       - name: Pack Extension
         run: |
@@ -30,24 +30,27 @@ jobs:
           cd ..
           echo "扩展已打包到 ${{ env.ZIP_NAME }}"
       
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
         with:
-          tag_name: ${{ env.TAG_NAME }}
-          release_name: 网页 AI 转写器 ${{ env.TAG_NAME }}
-          body_path: RELEASE_NOTES.md
-          draft: false
-          prerelease: false
+          name: extension-package
+          path: ${{ env.ZIP_NAME }}
+          retention-days: 30
           
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create or Update Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ env.ZIP_NAME }}
-          asset_name: ${{ env.ZIP_NAME }}
-          asset_content_type: application/zip 
+          tag_name: latest
+          name: 最新自动构建 (更新于 ${{ env.TIMESTAMP }})
+          body: |
+            这是由GitHub Actions自动构建的最新版本，基于最新的代码提交。
+            
+            构建时间: ${{ env.TIMESTAMP }}
+            提交ID: ${{ github.sha }}
+            提交信息: ${{ github.event.head_commit.message }}
+            
+            此版本会在每次提交后自动更新。
+          files: ${{ env.ZIP_NAME }}
+          draft: false
+          prerelease: true 
