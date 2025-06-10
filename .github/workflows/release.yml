@@ -24,7 +24,7 @@ jobs:
           cd smart-search-extension
           zip -r "../${{ env.ZIP_NAME }}" * -x "*.DS_Store" "*.tmp" "*.log" "STORE_DESCRIPTION.txt"
           cd ..
-          echo "::set-output name=zip_path::${{ env.ZIP_NAME }}"
+          echo "扩展已打包到 ${{ env.ZIP_NAME }}"
       
       - name: Create Release
         id: create_release

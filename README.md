@@ -1,10 +1,30 @@
 # 网页 AI 转写器
 
-![网页 AI 转写器图标](icons/icon128.png)
+![网页 AI 转写器图标](smart-search-extension/icons/icon128.webp)
 
 ## 简介
 
 网页 AI 转写器是一款强大的 Chrome 扩展，可以帮助您将网页内容通过 AI 服务进行智能转写和优化。无论是阅读长文章、处理视频文字稿，还是整理网页内容，都能帮您轻松完成。
+
+## 项目结构
+
+```
+web-ai-transcriber/
+├── smart-search-extension/  # 扩展的实际代码，这是需要发布到Chrome商店的部分
+│   ├── background.js        # 后台脚本
+│   ├── content.js           # 内容脚本
+│   ├── manifest.json        # 扩展清单
+│   ├── options.html         # 选项页面
+│   ├── options.js           # 选项脚本
+│   └── icons/               # 图标文件
+├── .github/                 # GitHub配置
+│   └── workflows/           # GitHub Actions工作流
+│       └── release.yml      # 自动发布配置
+├── issues/                  # 功能说明和文档
+├── README.md                # 项目说明
+├── RELEASE_NOTES.md         # 发布说明
+└── GITHUB_RELEASE_GUIDE.md  # GitHub发布指南
+```
 
 ## 主要功能
 
