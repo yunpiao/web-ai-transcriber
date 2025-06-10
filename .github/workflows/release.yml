@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*' # 当推送带v前缀的标签时触发，例如v4.2
 
+# 添加明确的权限声明
+permissions:
+  contents: write # 允许工作流创建release和上传资源
+
 jobs:
   build:
     runs-on: ubuntu-latest
