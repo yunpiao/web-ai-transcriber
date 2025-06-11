@@ -1,17 +1,5 @@
 // 【架构升级】为每个引擎定义输入框和提交按钮的选择器
 const ENGINE_CONFIG = {
-  'www.google.com': {
-    input: 'textarea[name="q"]',
-    submit: 'button[type="submit"]' 
-  },
-  'www.bing.com': {
-    input: 'input[name="q"]',
-    submit: 'button#search_icon'
-  },
-  'duckduckgo.com': {
-    input: 'input[name="q"]',
-    submit: 'button[type="submit"]'
-  },
   'gemini.google.com': {
     // Gemini 的输入框和按钮选择器
     input: 'div.ql-editor.textarea, rich-textarea .ql-editor',
@@ -22,19 +10,12 @@ const ENGINE_CONFIG = {
     input: '#chat-input',
     submit: '#send-message-button',
     deepThinkingButton: 'button.ThinkingButton,button.chat-input-feature-btn' //
-
   },
   'chat.deepseek.com': {
     // DeepSeek 的选择器，基于用户提供的实际界面
     input: 'textarea#chat-input',
     submit: 'button#send-message-button',
-  },
-  'grok.x.ai': {
-    // Grok 的选择器
-    input: 'textarea[aria-label="Ask Grok anything"]',
-    submit: 'button[type="submit"], button[aria-label="Submit"]',
-    deepThinkingButton: 'button[aria-label="deepThinking"]' // deepThinking按钮
-  }
+  } 
 };
 
 // 自执行异步函数

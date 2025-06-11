@@ -8,9 +8,6 @@ const SEARCH_ENGINES = {
   },
   deepseek: {
     url: 'https://chat.deepseek.com/',
-  },
-  grok: {
-    url: 'https://grok.x.ai/',
   }
 };
 
