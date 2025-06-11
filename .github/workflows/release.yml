@@ -16,12 +16,12 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         
       - name: Set up environment
         run: |
           echo "TIMESTAMP=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
-          echo "ZIP_NAME=网页AI转写器_自动构建_${{ github.sha | slice: 0, 7 }}_$(date +'%Y%m%d').zip" >> $GITHUB_ENV
+          echo "ZIP_NAME=AI_${GITHUB_SHA::7}_$(date +'%Y%m%d').zip" >> $GITHUB_ENV
       
       - name: Pack Extension
         run: |
@@ -31,11 +31,19 @@ jobs:
           echo "扩展已打包到 ${{ env.ZIP_NAME }}"
       
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: extension-package
           path: ${{ env.ZIP_NAME }}
           retention-days: 30
+          
+      - name: Delete existing release
+        uses: dev-drprasad/delete-tag-and-release@v0.2.1
+        with:
+          tag_name: latest
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          delete_release: true
+        continue-on-error: true
           
       - name: Create or Update Release
         id: create_release
