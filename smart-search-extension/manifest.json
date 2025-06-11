@@ -26,7 +26,9 @@
     "storage"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://gemini.google.com/*",
+    "https://chat.qwen.ai/*",
+    "https://chat.deepseek.com/*"
   ],
   "background": {
     "service_worker": "background.js"

@@ -30,8 +30,9 @@ async function handleSearch(tab) {
     
     // 3. 从 storage 读取用户配置
     const settings = await chrome.storage.sync.get({
-      favoriteEngine: 'google',
-      useCurrentTab: false
+      favoriteEngine: 'qwen',
+      useCurrentTab: false,
+      enabledeepThinking: true,
     });
     
     // 4. 根据配置打开对应的搜索引擎页面
@@ -77,7 +78,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
   // 初始化扩展时确保所有设置都有默认值
   chrome.storage.sync.get({
-    favoriteEngine: 'google', // 默认搜索引擎
+    favoriteEngine: 'qwen', // 默认搜索引擎
     promptTemplate: null, // 提示词可能还没有设置
     enabledeepThinking: false, // 默认不启用深度搜索
     useCurrentTab: false // 默认不在当前页面打开
