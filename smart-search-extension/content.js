@@ -126,6 +126,24 @@ const ENGINE_CONFIG = {
           }));
         }
         // 等待1秒
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        inputBox.blur();
+
+        // 循环等待 markdown markdown-main-panel 出现
+        let markdownMainPanel = document.querySelector(".markdown-main-panel");
+        while (!markdownMainPanel) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          markdownMainPanel = document.querySelector(".markdown-main-panel");
+        }
+        if (markdownMainPanel) {
+          console.log('[智能搜索扩展] 已找到 markdown-main-panel 元素');
+          markdownMainPanel.focus();
+          markdownMainPanel.scrollIntoView({ behavior: 'smooth' });
+          markdownMainPanel.click();
+        } else {
+          console.error('[智能搜索扩展] 未找到 markdown 元素');
+        }
+
         
         // 5. 清理工作
         await chrome.storage.local.remove('tempSearchText');
