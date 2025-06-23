@@ -20,7 +20,6 @@
     "128": "icons/icon128.png"
   },
   "permissions": [
-    "tabs",
     "scripting",
     "contextMenus",
     "storage"

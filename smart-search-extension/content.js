@@ -98,6 +98,7 @@ const ENGINE_CONFIG = {
       searchText = `${promptTemplate}${searchText}`;
 
       // 1. 填入内容
+      searchText = searchText.replace(/</g, '\'<\'').replace(/>/g, '\'>\'');
       if (inputBox.tagName === 'DIV') {
         inputBox.innerHTML = searchText.replace(/\n/g, '<br>');
       } else {
