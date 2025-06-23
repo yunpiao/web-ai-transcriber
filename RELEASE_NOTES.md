@@ -1,4 +1,4 @@
-# 网页 AI 转写器 v4.3 发布说明
+# 网页 AI 转写器 v4.4 发布说明
 
 ## 新特性
 - 支持多种AI平台：Google Gemini、通义千问、DeepSeek、Grok
