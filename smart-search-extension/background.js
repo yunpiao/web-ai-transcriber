@@ -8,6 +8,9 @@ const SEARCH_ENGINES = {
   },
   deepseek: {
     url: 'https://chat.deepseek.com/',
+  },
+  aistudio: {
+    url: 'https://aistudio.google.com/app/prompts/new_chat',
   }
 };
 

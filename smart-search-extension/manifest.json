@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "网页 AI 转写器",
-  "version": "4.4",
+  "version": "4.6",
   "description": "通过右键菜单或点击扩展图标，使用AI服务转写和优化页面文本。",
   "options_page": "options.html",
   "action": {

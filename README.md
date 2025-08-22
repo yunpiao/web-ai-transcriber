@@ -1,6 +1,6 @@
 # 网页 AI 转写器
 
-![网页 AI 转写器图标](smart-search-extension/icons/icon128.webp)
+![网页 AI 转写器图标](smart-search-extension/icons/icon128.png)
 
 ## todo
 默认值问题
@@ -35,7 +35,7 @@ web-ai-transcriber/
 ## 主要功能
 
 - **便捷操作**：支持右键菜单和扩展图标点击两种方式启动
-- **多平台支持**：兼容多种主流 AI 平台，包括 Google Gemini、通义千问、DeepSeek、Grok 等
+- **多平台支持**：兼容多种主流 AI 平台，包括 Google Gemini、通义千问、DeepSeek、Aistudio 等
 - **自定义提示词**：可定制 AI 处理文本的指令模板，满足不同场景需求
 - **深度思考功能**：支持启用 AI 的深度思考/搜索能力，获得更全面的内容处理结果
 - **灵活浏览模式**：可选择在当前页面进行转写，或在新标签页中打开
@@ -52,7 +52,7 @@ web-ai-transcriber/
 
 1. **安装扩展**：从 Chrome 网上应用店安装本扩展
 2. **配置选项**：
-   - 选择您偏好的 AI 平台（Gemini、通义千问、DeepSeek、Grok 等）
+   - 选择您偏好的 AI 平台（Gemini、通义千问、DeepSeek、Google Aistudio 等）
    - 自定义 AI 处理提示词（可使用默认模板）
    - 设置是否启用深度思考功能
    - 选择是否在当前页面进行转写

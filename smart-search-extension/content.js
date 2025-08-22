@@ -15,7 +15,12 @@ const ENGINE_CONFIG = {
     // DeepSeek 的选择器，基于用户提供的实际界面
     input: 'textarea#chat-input',
     submit: 'button#send-message-button',
-  } 
+  },
+  'aistudio.google.com': {
+    // Google AI Studio 的输入框和按钮选择器
+    input: 'textarea.textarea, textarea[aria-label*="Type something"]',
+    submit: 'button[aria-label="Run"], button.run-button',
+  }
 };
 
 // 自执行异步函数

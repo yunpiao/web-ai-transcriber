@@ -22,6 +22,10 @@ jobs:
         run: |
           echo "TIMESTAMP=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
           echo "ZIP_NAME=AI_${GITHUB_SHA::7}_$(date +'%Y%m%d').zip" >> $GITHUB_ENV
+          # 提取版本号
+          VERSION=$(grep '"version"' smart-search-extension/manifest.json | cut -d'"' -f4)
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "TAG_NAME=v${VERSION}" >> $GITHUB_ENV
       
       - name: Pack Extension
         run: |
@@ -37,10 +41,17 @@ jobs:
           path: ${{ env.ZIP_NAME }}
           retention-days: 30
           
+      - name: Create git tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -f "${{ env.TAG_NAME }}"
+          git push origin "${{ env.TAG_NAME }}" -f
+
       - name: Delete existing release
         uses: dev-drprasad/delete-tag-and-release@v0.2.1
         with:
-          tag_name: latest
+          tag_name: ${{ env.TAG_NAME }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           delete_release: true
         continue-on-error: true
@@ -49,16 +60,54 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: latest
-          name: 最新自动构建 (更新于 ${{ env.TIMESTAMP }})
+          tag_name: ${{ env.TAG_NAME }}
+          name: 版本 ${{ env.VERSION }} - 自动构建 (更新于 ${{ env.TIMESTAMP }})
           body: |
-            这是由GitHub Actions自动构建的最新版本，基于最新的代码提交。
-            
-            构建时间: ${{ env.TIMESTAMP }}
-            提交ID: ${{ github.sha }}
-            提交信息: ${{ github.event.head_commit.message }}
-            
+            ## 版本 ${{ env.VERSION }}
+
+            这是由GitHub Actions自动构建的版本，基于最新的代码提交。
+
+            📅 构建时间: ${{ env.TIMESTAMP }}
+            🔗 提交ID: ${{ github.sha }}
+            📝 提交信息: ${{ github.event.head_commit.message }}
+
             此版本会在每次提交后自动更新。
+
+            ### 安装方法
+            1. 下载附件中的zip文件
+            2. 解压后加载到Chrome扩展程序中
           files: ${{ env.ZIP_NAME }}
           draft: false
-          prerelease: true 
+          prerelease: false
+
+      - name: Update latest tag to point to current version
+        run: |
+          # 删除现有的latest标签
+          git tag -d latest 2>/dev/null || true
+          git push origin :latest 2>/dev/null || true
+
+          # 创建新的latest标签指向当前版本
+          git tag -f latest "${{ env.TAG_NAME }}"
+          git push origin latest -f
+
+      - name: Update latest release (optional)
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: latest
+          name: 最新版本 (v${{ env.VERSION }})
+          body: |
+            🚀 最新版本：**v${{ env.VERSION }}**
+
+            这始终指向最新的稳定版本。
+
+            ### 当前版本信息
+            - 📦 版本：v${{ env.VERSION }}
+            - 📅 构建时间：${{ env.TIMESTAMP }}
+            - 🔗 提交ID：${{ github.sha }}
+
+            ### 下载
+            请使用上面的版本标签下载最新版本的扩展包。
+          files: ${{ env.ZIP_NAME }}
+          draft: false
+          prerelease: false
+        continue-on-error: true 
