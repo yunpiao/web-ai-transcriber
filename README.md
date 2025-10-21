@@ -2,9 +2,16 @@
 
 ![网页 AI 转写器图标](smart-search-extension/icons/icon128.png)
 
-## todo
-默认值问题
-审核问题
+**版本**: 4.7  
+**最后更新**: 2025-10-21
+
+## 🆕 新功能（v4.7）
+
+- ✅ **智能浏览记录**：自动记录停留5秒以上的网页
+- ✅ **历史管理面板**：查看、搜索、导出浏览历史
+- ✅ **完整测试体系**：47个自动化测试用例保障质量
+
+[查看完整更新日志](smart-search-extension/VERSION_4.7_CHANGELOG.md)
 
 
 
@@ -34,11 +41,21 @@ web-ai-transcriber/
 
 ## 主要功能
 
+### AI 转写功能
 - **便捷操作**：支持右键菜单和扩展图标点击两种方式启动
 - **多平台支持**：兼容多种主流 AI 平台，包括 Google Gemini、通义千问、DeepSeek、Aistudio 等
 - **自定义提示词**：可定制 AI 处理文本的指令模板，满足不同场景需求
 - **深度思考功能**：支持启用 AI 的深度思考/搜索能力，获得更全面的内容处理结果
 - **灵活浏览模式**：可选择在当前页面进行转写，或在新标签页中打开
+
+### 浏览记录功能（🆕 v4.7）
+- **自动记录**：页面停留5秒自动保存
+- **智能分组**：按日期分组（今天、昨天、本周、更早）
+- **快速搜索**：支持标题、URL、域名搜索
+- **数据导出**：导出为JSON格式备份
+- **隐私保护**：所有数据本地存储，不上传
+
+[查看功能使用指南](smart-search-extension/FEATURE_USAGE.md)
 
 ## 使用场景
 
@@ -83,8 +100,49 @@ web-ai-transcriber/
 
 ## 开发者信息
 
-如有问题或建议，请通过 Chrome 商店页面与我们联系。
+### 开发和测试
+
+本项目包含完整的自动化测试体系：
+
+```bash
+# 安装依赖
+npm install
+
+# 运行测试
+npm test
+
+# 快速开始
+参考 QUICKSTART.md
+```
+
+**测试覆盖**：
+- 单元测试：22个用例
+- 集成测试：11个用例
+- E2E测试：14个用例
+
+[查看测试文档](README_TESTING.md) | [实施总结](IMPLEMENTATION_SUMMARY.md)
+
+### 项目结构
+
+```
+chrome/
+├── smart-search-extension/  # 扩展源代码
+├── tests/                   # 自动化测试
+├── package.json             # NPM配置
+├── jest.config.js           # 测试配置
+└── .github/workflows/       # CI/CD配置
+```
+
+### 相关文档
+
+- 📖 [功能使用指南](smart-search-extension/FEATURE_USAGE.md)
+- 🧪 [测试文档](README_TESTING.md)
+- 📝 [实施总结](IMPLEMENTATION_SUMMARY.md)
+- 🚀 [快速开始](QUICKSTART.md)
+- 📋 [更新日志](smart-search-extension/VERSION_4.7_CHANGELOG.md)
 
 ---
 
-**让网页内容转写变得简单而智能！** 
+如有问题或建议，请通过 Chrome 商店页面与我们联系。
+
+**让网页内容转写变得简单而智能！** ✨ 

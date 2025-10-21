@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>浏览历史记录</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    
+    h1 {
+      font-size: 28px;
+      margin-bottom: 15px;
+      color: #1a73e8;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .search-box:focus {
+      outline: none;
+      border-color: #1a73e8;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: #1a73e8;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+    
+    .btn-danger {
+      background: #d32f2f;
+      color: white;
+    }
+    
+    .btn-danger:hover {
+      background: #b71c1c;
+    }
+    
+    .btn-secondary {
+      background: #5f6368;
+      color: white;
+    }
+    
+    .btn-secondary:hover {
+      background: #494c50;
+    }
+    
+    .filter-panel {
+      background: #f5f5f5;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+      border: 1px solid #e0e0e0;
+    }
+    
+    .filter-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .filter-container {
+      display: flex;
+      gap: 20px;
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      position: relative;
+    }
+    
+    /* 日历样式 */
+    .calendar-section {
+      flex: 0 0 360px;
+      padding-right: 20px;
+      border-right: 2px solid #f0f0f0;
+    }
+    
+    .calendar-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 15px;
+      gap: 15px;
+    }
+    
+    .calendar-nav-btn {
+      background: #f8f9fa;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #5f6368;
+    }
+    
+    .calendar-nav-btn:hover {
+      background: #1a73e8;
+      color: white;
+      transform: scale(1.1);
+    }
+    
+    .calendar-current {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a73e8;
+      min-width: 140px;
+      text-align: center;
+    }
+    
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    
+    .calendar-weekday {
+      text-align: center;
+      font-size: 11px;
+      color: #888;
+      padding: 8px 0;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+      background: #f8f9fa;
+      color: #333;
+      position: relative;
+      font-weight: 500;
+    }
+    
+    .calendar-day:hover:not(.disabled) {
+      background: #1a73e8;
+      color: white;
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+    
+    .calendar-day.selected {
+      background: #1a73e8;
+      color: white;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
+      transform: scale(1.05);
+    }
+    
+    .calendar-day.today {
+      border: 2px solid #1a73e8;
+      font-weight: 700;
+    }
+    
+    .calendar-day.other-month {
+      color: #ccc;
+      background: transparent;
+    }
+    
+    .calendar-day.disabled {
+      color: #e0e0e0;
+      cursor: not-allowed;
+      background: transparent;
+    }
+    
+    .calendar-day.has-records::after {
+      content: '';
+      position: absolute;
+      bottom: 3px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 5px;
+      height: 5px;
+      background: #34a853;
+      border-radius: 50%;
+      box-shadow: 0 0 4px rgba(52, 168, 83, 0.6);
+    }
+    
+    .calendar-day.selected.has-records::after {
+      background: #fff;
+      box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+    }
+    
+    /* 小时选择器样式 */
+    .hours-section {
+      flex: 1;
+      padding-left: 20px;
+    }
+    
+    .hours-section .filter-title {
+      color: #333;
+      font-size: 15px;
+      margin-bottom: 12px;
+    }
+    
+    .hours-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      max-height: 280px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+    
+    .hours-grid::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .hours-grid::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+    
+    .hours-grid::-webkit-scrollbar-thumb {
+      background: #1a73e8;
+      border-radius: 3px;
+    }
+    
+    .hour-btn {
+      padding: 10px 4px;
+      border: 1px solid #e8e8e8;
+      background: #fafafa;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      text-align: center;
+      transition: all 0.2s;
+      position: relative;
+      font-weight: 500;
+      color: #555;
+    }
+    
+    .hour-btn:hover:not(.selected) {
+      background: #1a73e8;
+      color: white;
+      border-color: #1a73e8;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(26, 115, 232, 0.2);
+    }
+    
+    .hour-btn.selected {
+      background: #1a73e8;
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
+      transform: translateY(-2px);
+    }
+    
+    .hour-btn.has-records {
+      font-weight: 600;
+    }
+    
+    .hour-btn.has-records::before {
+      content: '';
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 5px;
+      height: 5px;
+      background: #34a853;
+      border-radius: 50%;
+      box-shadow: 0 0 4px rgba(52, 168, 83, 0.6);
+    }
+    
+    .hour-btn.selected.has-records::before {
+      background: #fff;
+      box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+    }
+    
+    .filter-actions {
+      margin-top: 15px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    
+    .btn-clear-filter {
+      padding: 10px 20px;
+      background: white;
+      color: #5f6368;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    
+    .btn-clear-filter:hover {
+      background: #f8f9fa;
+      border-color: #1a73e8;
+      color: #1a73e8;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stats {
+      margin-top: 15px;
+      color: #5f6368;
+      font-size: 14px;
+    }
+    
+    .stats strong {
+      color: #1a73e8;
+    }
+    
+    .timeline {
+      margin-top: 20px;
+    }
+    
+    .date-group {
+      margin-bottom: 30px;
+    }
+    
+    .date-header {
+      font-size: 18px;
+      font-weight: 600;
+      color: #5f6368;
+      margin-bottom: 15px;
+      padding-left: 10px;
+      border-left: 4px solid #1a73e8;
+    }
+    
+    .history-card {
+      background: white;
+      padding: 15px 20px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: all 0.2s;
+    }
+    
+    .history-card:hover {
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      transform: translateY(-1px);
+    }
+    
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    
+    .favicon {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+    }
+    
+    .card-title {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 500;
+      color: #1a73e8;
+      cursor: pointer;
+      text-decoration: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .card-title:hover {
+      text-decoration: underline;
+    }
+    
+    .card-time {
+      font-size: 13px;
+      color: #5f6368;
+    }
+    
+    .card-url {
+      font-size: 13px;
+      color: #5f6368;
+      margin-bottom: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .card-domain {
+      display: inline-block;
+      padding: 3px 8px;
+      background: #e8f0fe;
+      color: #1a73e8;
+      border-radius: 12px;
+      font-size: 12px;
+      margin-right: 10px;
+    }
+    
+    .card-content {
+      font-size: 14px;
+      color: #666;
+      margin-top: 10px;
+      line-height: 1.5;
+      max-height: 60px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+    
+    .card-actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+    
+    .btn-small {
+      padding: 5px 12px;
+      font-size: 12px;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #5f6368;
+    }
+    
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+    
+    .empty-state-title {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+    
+    .empty-state-text {
+      font-size: 16px;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #5f6368;
+    }
+    
+    .spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #1a73e8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📖 浏览历史记录</h1>
+      <div class="controls">
+        <input type="text" id="search-input" class="search-box" placeholder="搜索标题或网址...">
+        <button id="summarize-today-btn" class="btn btn-primary">📝 总结今天浏览</button>
+        <button id="export-btn" class="btn btn-secondary">导出数据</button>
+        <button id="clear-btn" class="btn btn-danger">清空所有记录</button>
+      </div>
+      <div class="stats">
+        共有 <strong id="total-count">0</strong> 条浏览记录
+        <span id="filtered-info" style="margin-left: 10px;"></span>
+      </div>
+    </header>
+    
+    <div class="filter-panel">
+      <div class="filter-title">
+        <span>📅</span>
+        <span>时间筛选器</span>
+      </div>
+      <div class="filter-container">
+        <!-- 日历部分 -->
+        <div class="calendar-section">
+          <div class="calendar-header">
+            <button class="calendar-nav-btn" id="prev-month">◀</button>
+            <div class="calendar-current" id="current-month">2024年1月</div>
+            <button class="calendar-nav-btn" id="next-month">▶</button>
+          </div>
+          <div class="calendar-grid" id="calendar-grid">
+            <div class="calendar-weekday">日</div>
+            <div class="calendar-weekday">一</div>
+            <div class="calendar-weekday">二</div>
+            <div class="calendar-weekday">三</div>
+            <div class="calendar-weekday">四</div>
+            <div class="calendar-weekday">五</div>
+            <div class="calendar-weekday">六</div>
+            <!-- 日期将由JS动态生成，直接添加到这个grid中 -->
+          </div>
+        </div>
+        
+        <!-- 小时选择部分 -->
+        <div class="hours-section">
+          <div class="filter-title">🕐 选择小时</div>
+          <div class="hours-grid" id="hours-grid">
+            <!-- 0-23小时将由JS生成 -->
+          </div>
+        </div>
+      </div>
+      <div class="filter-actions">
+        <button class="btn-clear-filter" id="clear-filter">🔄 清除筛选</button>
+      </div>
+    </div>
+    
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>加载中...</p>
+    </div>
+    
+    <div id="timeline" class="timeline hidden">
+      <!-- 历史记录将在这里动态生成 -->
+    </div>
+    
+    <div id="empty-state" class="empty-state hidden">
+      <div class="empty-state-icon">📭</div>
+      <div class="empty-state-title">暂无浏览记录</div>
+      <div class="empty-state-text">
+        <p>启用浏览记录功能后，当您在网页停留超过5秒时，系统会自动记录。</p>
+        <p style="margin-top: 10px;">
+          <a href="options.html" style="color: #1a73e8;">前往设置页面启用此功能</a>
+        </p>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="history.js"></script>
+</body>
+</html>
+

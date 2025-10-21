@@ -84,7 +84,8 @@ chrome.runtime.onInstalled.addListener(() => {
     favoriteEngine: 'qwen', // 默认搜索引擎
     promptTemplate: null, // 提示词可能还没有设置
     enabledeepThinking: false, // 默认不启用深度搜索
-    useCurrentTab: false // 默认不在当前页面打开
+    useCurrentTab: false, // 默认不在当前页面打开
+    enablePageTracking: false // 默认不启用页面追踪（新功能）
   }, (items) => {
     // 如果提示词模板未设置，设置默认值
     if (items.promptTemplate === null) {
@@ -131,3 +132,68 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 chrome.action.onClicked.addListener((tab) => {
   handleSearch(tab);
 });
+
+// 4. 监听来自 content script 的消息（页面追踪功能）
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'savePageHistory') {
+    // 保存数据到 IndexedDB
+    (async () => {
+      try {
+        // 使用 IndexedDB 保存数据
+        await saveHistoryToDB(request.data);
+        sendResponse({ success: true });
+      } catch (error) {
+        console.error('[Background] 保存历史记录失败:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    
+    // 返回 true 表示异步响应
+    return true;
+  }
+});
+
+// IndexedDB 操作函数（在 background service worker 中）
+async function saveHistoryToDB(historyData) {
+  const DB_NAME = 'PageHistoryDB';
+  const DB_VERSION = 1;
+  const STORE_NAME = 'pageHistory';
+  
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    
+    request.onerror = () => {
+      console.error('数据库打开失败:', request.error);
+      reject(request.error);
+    };
+    
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const addRequest = objectStore.add(historyData);
+      
+      addRequest.onsuccess = () => {
+        console.log('历史记录保存成功:', historyData.url);
+        db.close();
+        resolve();
+      };
+      
+      addRequest.onerror = () => {
+        console.error('历史记录保存失败:', addRequest.error);
+        db.close();
+        reject(addRequest.error);
+      };
+    };
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        objectStore.createIndex('url', 'url', { unique: false });
+        objectStore.createIndex('visitTime', 'visitTime', { unique: false });
+        objectStore.createIndex('domain', 'domain', { unique: false });
+      }
+    };
+  });
+}

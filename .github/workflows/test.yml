@@ -1,0 +1,63 @@
+name: 自动化测试
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 设置 Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: 安装依赖
+      run: npm ci
+    
+    - name: 运行单元测试
+      run: npm run test:unit
+    
+    - name: 运行集成测试
+      run: npm run test:integration
+    
+    - name: 运行E2E测试
+      run: |
+        # E2E测试需要图形界面，在CI环境中使用xvfb
+        sudo apt-get install -y xvfb
+        xvfb-run --auto-servernum npm run test:e2e
+      env:
+        CI: true
+    
+    - name: 生成覆盖率报告
+      run: npm run test:coverage
+    
+    - name: 上传覆盖率报告
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/coverage-final.json
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
+    - name: 上传测试结果
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results-${{ matrix.node-version }}
+        path: |
+          coverage/
+          test-results/
+

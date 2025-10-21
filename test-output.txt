@@ -1,0 +1,88 @@
+npm warn Unknown user config "home". This will stop working in the next major version of npm.
+
+> smart-search-extension@4.7.0 test
+> npm run test:core
+
+npm warn Unknown env config "home". This will stop working in the next major version of npm.
+npm warn Unknown user config "home". This will stop working in the next major version of npm.
+
+> smart-search-extension@4.7.0 test:core
+> npm run test:unit && npm run test:integration
+
+npm warn Unknown env config "home". This will stop working in the next major version of npm.
+npm warn Unknown user config "home". This will stop working in the next major version of npm.
+
+> smart-search-extension@4.7.0 test:unit
+> jest tests/unit
+
+PASS tests/unit/db.test.js
+  数据库操作测试
+    ✓ 应该能够初始化数据库 (6 ms)
+    ✓ 应该能够保存历史记录 (10 ms)
+    ✓ 应该能够获取所有历史记录 (3 ms)
+    ✓ 应该按时间倒序返回记录 (2 ms)
+    ✓ 应该能够删除单条记录 (5 ms)
+    ✓ 应该能够清空所有记录 (2 ms)
+    ✓ 不应该保存重复ID的记录 (3 ms)
+    ✓ 应该正确处理空数据库 (1 ms)
+
+PASS tests/unit/utils.test.js
+  时间格式化测试
+    ✓ 应该正确格式化时间（HH:MM）
+    ✓ 应该正确处理单位数的小时和分钟
+    ✓ 应该正确格式化日期（YYYY-MM-DD） (1 ms)
+    ✓ 应该正确处理单位数的月份和日期
+  日期标签测试
+    ✓ 应该识别今天的记录
+    ✓ 应该识别昨天的记录
+    ✓ 应该识别本周的记录
+    ✓ 应该识别更早的记录
+  日期分组测试
+    ✓ 应该正确分组历史记录 (1 ms)
+    ✓ 应该返回所有分组键
+  搜索功能测试
+    ✓ 应该能通过标题搜索
+    ✓ 应该能通过URL搜索
+    ✓ 应该能通过域名搜索
+    ✓ 搜索应该不区分大小写
+    ✓ 空查询应该返回所有记录
+    ✓ 空格查询应该返回所有记录
+    ✓ 没有匹配时应该返回空数组
+
+Test Suites: 2 passed, 2 total
+Tests:       25 passed, 25 total
+Snapshots:   0 total
+Time:        0.368 s, estimated 1 s
+Ran all test suites matching /tests\/unit/i.
+npm warn Unknown env config "home". This will stop working in the next major version of npm.
+npm warn Unknown user config "home". This will stop working in the next major version of npm.
+
+> smart-search-extension@4.7.0 test:integration
+> jest tests/integration
+
+PASS tests/integration/storage.test.js
+  存储功能集成测试
+    chrome.storage.sync 测试
+      ✓ 应该能够保存配置 (2 ms)
+      ✓ 应该能够读取配置 (1 ms)
+      ✓ 应该使用默认值（当配置不存在时） (1 ms)
+      ✓ 应该能够删除配置 (2 ms)
+      ✓ 应该能够清空所有配置
+    chrome.storage.local 测试
+      ✓ 应该能够保存临时数据
+      ✓ 应该能够删除临时数据 (1 ms)
+    sync vs local 隔离测试
+      ✓ sync和local存储应该相互独立
+
+PASS tests/integration/messaging.test.js
+  消息通信集成测试
+    ✓ 应该能够发送消息 (1 ms)
+    ✓ 应该能够监听消息 (1 ms)
+    ✓ 应该能够处理保存历史记录消息
+    ✓ 应该能够获取扩展URL (1 ms)
+
+Test Suites: 2 passed, 2 total
+Tests:       12 passed, 12 total
+Snapshots:   0 total
+Time:        0.353 s, estimated 1 s
+Ran all test suites matching /tests\/integration/i.

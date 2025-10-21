@@ -25,14 +25,18 @@ const ENGINE_CONFIG = {
 
 // 自执行异步函数
 (async () => {
-  // 从storage获取临时搜索文本
-  const data = await chrome.storage.local.get('tempSearchText');
+  // 从storage获取临时搜索文本和相关标识
+  const data = await chrome.storage.local.get(['tempSearchText', 'skipPromptTemplate']);
   let searchText = data.tempSearchText;
   if (!searchText) return;
+  
+  const skipPromptTemplate = data.skipPromptTemplate || false;
 
-  // 从storage获取用户自定义提示词
-  const promptData = await chrome.storage.sync.get('promptTemplate');
-  const promptTemplate = promptData.promptTemplate || `你将扮演一个'录音文字稿'优化器，将用户发送的视频文字稿优化为一篇结构清晰、内容准确且易于阅读的文章。你必须严格遵循以下规则来优化文稿：
+  // 从storage获取用户自定义提示词（如果不跳过的话）
+  let promptTemplate = '';
+  if (!skipPromptTemplate) {
+    const promptData = await chrome.storage.sync.get('promptTemplate');
+    promptTemplate = promptData.promptTemplate || `你将扮演一个'录音文字稿'优化器，将用户发送的视频文字稿优化为一篇结构清晰、内容准确且易于阅读的文章。你必须严格遵循以下规则来优化文稿：
 目的和目标：
 * 接收用户提供的视频文字稿。
 * 优化文稿，使其具备更好的可读性和结构。
@@ -56,6 +60,7 @@ const ENGINE_CONFIG = {
 * 保持专业、严谨和细致。
 * 提供清晰、准确的优化结果。
 * 专注于文字稿的优化工作，不进行额外的评论或问答。 文字稿为：`;
+  }
 
   // 从storage获取深度搜索设置
   const deepThinkingData = await chrome.storage.sync.get('enabledeepThinking');
@@ -152,7 +157,7 @@ const ENGINE_CONFIG = {
 
         
         // 5. 清理工作
-        await chrome.storage.local.remove('tempSearchText');
+        await chrome.storage.local.remove(['tempSearchText', 'skipPromptTemplate']);
         console.log(`[智能搜索扩展] 任务完成，临时数据已清除。`);
       }, 200); // 延迟增加到200ms以提高稳定性
 

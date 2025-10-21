@@ -1,25 +1,25 @@
-# 系统文件
+# Node modules
+node_modules/
+
+# Test coverage
+coverage/
+test-results/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
 Thumbs.db
 
-# IDE文件
-.idea/
-.vscode/
-*.sublime-project
-*.sublime-workspace
+# Build
+dist/
+build/
 
-# 临时文件
-*.log
+# Temporary files
 *.tmp
-*.temp
-
-# Node模块（如果有使用）
-node_modules/
-
-# 打包文件
-*.zip
-*.crx
-*.pem
-
-# 其他
-.env 
+temp/

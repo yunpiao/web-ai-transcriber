@@ -30,12 +30,14 @@ function save_options() {
   const promptTemplate = document.getElementById('prompt-template').value;
   const enabledeepThinking = document.getElementById('enable-deep-search').checked;
   const useCurrentTab = document.getElementById('use-current-tab').checked;
+  const enablePageTracking = document.getElementById('enable-page-tracking').checked;
   
   chrome.storage.sync.set({
     favoriteEngine: engine,
     promptTemplate: promptTemplate,
     enabledeepThinking: enabledeepThinking,
-    useCurrentTab: useCurrentTab
+    useCurrentTab: useCurrentTab,
+    enablePageTracking: enablePageTracking
   }, () => {
     // 更新状态，告诉用户选项已保存
     const status = document.getElementById('status');
@@ -52,12 +54,14 @@ function restore_options() {
     favoriteEngine: 'google', // 默认值是 'google'
     promptTemplate: DEFAULT_PROMPT, // 默认提示词
     enabledeepThinking: false, // 默认不启用深度搜索
-    useCurrentTab: false // 默认不在当前页面打开
+    useCurrentTab: false, // 默认不在当前页面打开
+    enablePageTracking: false // 默认不启用页面追踪
   }, (items) => {
     document.getElementById('search-engine').value = items.favoriteEngine;
     document.getElementById('prompt-template').value = items.promptTemplate;
     document.getElementById('enable-deep-search').checked = items.enabledeepThinking;
     document.getElementById('use-current-tab').checked = items.useCurrentTab;
+    document.getElementById('enable-page-tracking').checked = items.enablePageTracking;
   });
 }
 

@@ -1,0 +1,203 @@
+---
+description: Chrome扩展开发规范和架构模式
+alwaysApply: true
+---
+
+# Chrome扩展开发规范
+
+## 项目结构
+
+主要代码位于 [smart-search-extension/](mdc:smart-search-extension/) 目录：
+
+```
+smart-search-extension/
+├── manifest.json      # 扩展清单 - 权限、脚本配置
+├── background.js      # Service Worker - 后台逻辑
+├── content.js         # Content Script - AI转写功能
+├── tracker.js         # Content Script - 页面追踪
+├── db.js             # 数据库模块 - IndexedDB操作
+├── options.html      # 设置页面
+├── options.js        # 设置逻辑
+├── history.html      # 历史记录页面
+└── history.js        # 历史记录逻辑
+```
+
+## Manifest配置要点
+
+参考 [smart-search-extension/manifest.json](mdc:smart-search-extension/manifest.json)：
+
+1. **Content Scripts**：自动注入到网页
+   ```json
+   "content_scripts": [{
+     "matches": ["https://*/*", "http://*/*"],
+     "js": ["tracker.js"],
+     "run_at": "document_idle"
+   }]
+   ```
+
+2. **Permissions**：最小权限原则
+   - `storage` - 数据存储
+   - `activeTab` - 当前标签页
+   - `tabs` - 标签页API
+   - `scripting` - 动态脚本注入
+
+3. **ES模块导出**：
+   ```javascript
+   // db.js中必须导出
+   export { function1, function2 };
+   
+   // history.js中导入
+   import { function1 } from './db.js';
+   ```
+
+## Content Script限制
+
+Content scripts**只能**在以下页面运行：
+- ✅ `https://` 网页
+- ✅ `http://` 网页
+- ❌ `chrome-extension://` 扩展页面
+- ❌ `chrome://` 内部页面
+- ❌ `file://` 本地文件
+
+**重要**：设计功能时必须考虑这个限制！
+
+## IndexedDB数据操作
+
+参考 [smart-search-extension/db.js](mdc:smart-search-extension/db.js)：
+
+```javascript
+// 1. 初始化数据库
+const db = await initDB();
+
+// 2. 创建事务
+const transaction = db.transaction([STORE_NAME], 'readwrite');
+const objectStore = transaction.objectStore(STORE_NAME);
+
+// 3. 执行操作
+const request = objectStore.add(data);
+
+// 4. 处理结果
+request.onsuccess = () => { db.close(); };
+request.onerror = () => { db.close(); };
+```
+
+**必须**：
+- ✅ 使用Promise包装IndexedDB操作
+- ✅ 操作完成后关闭数据库连接
+- ✅ 正确处理错误
+
+## 配置管理模式
+
+参考 [smart-search-extension/options.js](mdc:smart-search-extension/options.js)：
+
+1. **保存配置**：
+   ```javascript
+   chrome.storage.sync.set({
+     configKey: value
+   }, callback);
+   ```
+
+2. **读取配置（带默认值）**：
+   ```javascript
+   chrome.storage.sync.get({
+     configKey: defaultValue
+   }, (items) => {
+     // 使用items.configKey
+   });
+   ```
+
+3. **在background.js初始化时设置默认值**
+
+## 消息通信模式
+
+参考 [smart-search-extension/background.js](mdc:smart-search-extension/background.js)：
+
+### Content Script → Background
+
+```javascript
+// content script发送
+chrome.runtime.sendMessage({
+  action: 'actionName',
+  data: {}
+}, (response) => {
+  if (response.success) { }
+});
+
+// background接收
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'actionName') {
+    (async () => {
+      try {
+        // 处理逻辑
+        sendResponse({ success: true });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    return true; // 异步响应必须返回true
+  }
+});
+```
+
+## 添加新功能的完整流程
+
+1. **更新manifest.json**
+   - 添加必要权限
+   - 注册新的content script（如果需要）
+   - 更新版本号
+
+2. **实现功能代码**
+   - 创建新的.js文件
+   - 如果是ES模块，添加export语句
+   - 添加适当的console.log用于调试
+
+3. **更新UI和配置**
+   - 在options.html添加开关
+   - 在options.js添加保存/读取逻辑
+   - 在background.js初始化默认值
+
+4. **编写测试**（按此顺序）
+   - 单元测试（核心逻辑）
+   - 集成测试（模块交互）
+   - E2E测试（真实环境）
+   - 参考 [testing-pattern.mdc](mdc:.cursor/rules/testing-pattern.mdc)
+
+5. **运行测试验证**
+   ```bash
+   npm run test:all
+   ```
+
+6. **更新文档**
+   - 功能说明
+   - 使用指南
+   - 更新日志
+
+## 调试技巧
+
+1. **在关键位置添加console.log**：
+   ```javascript
+   console.log('[模块名] 操作描述:', data);
+   ```
+
+2. **检查扩展是否加载**：
+   - 访问 `chrome://extensions/`
+   - 查看是否有错误
+   - 点击"检查视图"查看背景页控制台
+
+3. **检查content script**：
+   - 打开网页
+   - F12打开控制台
+   - 查看是否有tracker相关日志
+
+4. **检查IndexedDB**：
+   - F12 → Application → IndexedDB
+   - 查看PageHistoryDB数据库
+
+## 代码质量要求
+
+- ✅ 所有异步操作使用async/await
+- ✅ 正确处理错误（try/catch）
+- ✅ 添加有意义的注释
+- ✅ 使用有意义的变量名
+- ✅ 遵循现有代码风格
+- ✅ 每个功能必须有开关（默认关闭）
