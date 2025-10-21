@@ -250,6 +250,26 @@
     .hours-section {
       flex: 1;
       padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    #hours-placeholder {
+      display: none;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      color: #5f6368;
+      font-size: 14px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      text-align: center;
+      padding: 20px;
+      border: 2px dashed #e0e0e0;
+    }
+
+    .hours-section.disabled {
+        opacity: 0.7;
     }
     
     .hours-section .filter-title {
@@ -453,6 +473,27 @@
       margin-right: 10px;
     }
     
+    .card-duration {
+      display: inline-block;
+      padding: 3px 8px;
+      background: #e8f5e9;
+      color: #2e7d32;
+      border-radius: 12px;
+      font-size: 12px;
+      margin-left: 10px;
+      font-weight: 500;
+    }
+    
+    .card-duration-empty {
+      display: inline-block;
+      padding: 3px 8px;
+      background: #fafafa;
+      color: #999;
+      border-radius: 12px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    
     .card-content {
       font-size: 14px;
       color: #666;
@@ -463,6 +504,7 @@
       text-overflow: ellipsis;
       display: -webkit-box;
       -webkit-line-clamp: 3;
+      line-clamp: 3;
       -webkit-box-orient: vertical;
     }
     
@@ -521,6 +563,138 @@
     .hidden {
       display: none;
     }
+
+    details > summary {
+      list-style: none;
+    }
+    details > summary::-webkit-details-marker {
+      display: none;
+    }
+    summary {
+        cursor: pointer;
+        user-select: none;
+    }
+    
+    summary:hover {
+      color: #1a73e8;
+    }
+
+    /* 筛选激活状态横幅 */
+    .filter-active-banner {
+      background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+      animation: slideDown 0.3s ease-out;
+    }
+    
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .filter-active-banner .banner-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .filter-active-banner .banner-icon {
+      font-size: 18px;
+    }
+    
+    .filter-active-banner .clear-banner-btn {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 6px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .filter-active-banner .clear-banner-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.05);
+    }
+
+    .quick-filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .quick-filter-btn {
+      padding: 8px 16px;
+      background: #f1f3f4;
+      color: #3c4043;
+      border: 1px solid transparent;
+      border-radius: 16px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .quick-filter-btn:hover {
+      background: #e8eaed;
+    }
+
+    .quick-filter-btn.active {
+      background: #e8f0fe;
+      color: #1967d2;
+      border-color: #1967d2;
+      font-weight: 600;
+    }
+    
+    /* 优化卡片URL显示 */
+    .card-url {
+      font-size: 13px;
+      color: #5f6368;
+      margin-bottom: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 0;
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+    
+    .history-card:hover .card-url {
+      max-width: 100%;
+      opacity: 1;
+      margin-bottom: 8px;
+    }
+    
+    /* 优化总结按钮样式 */
+    #summarize-today-btn {
+      background: linear-gradient(135deg, #34a853 0%, #2d8e47 100%);
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(52, 168, 83, 0.3);
+    }
+    
+    #summarize-today-btn:hover {
+      background: linear-gradient(135deg, #2d8e47 0%, #34a853 100%);
+      box-shadow: 0 4px 8px rgba(52, 168, 83, 0.4);
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 <body>
@@ -529,7 +703,7 @@
       <h1>📖 浏览历史记录</h1>
       <div class="controls">
         <input type="text" id="search-input" class="search-box" placeholder="搜索标题或网址...">
-        <button id="summarize-today-btn" class="btn btn-primary">📝 总结今天浏览</button>
+        <button id="summarize-today-btn" class="btn btn-primary">📝 总结筛选结果</button>
         <button id="export-btn" class="btn btn-secondary">导出数据</button>
         <button id="clear-btn" class="btn btn-danger">清空所有记录</button>
       </div>
@@ -539,42 +713,59 @@
       </div>
     </header>
     
-    <div class="filter-panel">
-      <div class="filter-title">
-        <span>📅</span>
-        <span>时间筛选器</span>
+    <!-- 筛选激活状态横幅 -->
+    <div id="filter-active-banner" class="filter-active-banner hidden">
+      <div class="banner-content">
+        <span class="banner-icon">🔍</span>
+        <span id="banner-text">正在筛选</span>
       </div>
-      <div class="filter-container">
-        <!-- 日历部分 -->
-        <div class="calendar-section">
-          <div class="calendar-header">
-            <button class="calendar-nav-btn" id="prev-month">◀</button>
-            <div class="calendar-current" id="current-month">2024年1月</div>
-            <button class="calendar-nav-btn" id="next-month">▶</button>
-          </div>
-          <div class="calendar-grid" id="calendar-grid">
-            <div class="calendar-weekday">日</div>
-            <div class="calendar-weekday">一</div>
-            <div class="calendar-weekday">二</div>
-            <div class="calendar-weekday">三</div>
-            <div class="calendar-weekday">四</div>
-            <div class="calendar-weekday">五</div>
-            <div class="calendar-weekday">六</div>
-            <!-- 日期将由JS动态生成，直接添加到这个grid中 -->
+      <button class="clear-banner-btn" id="clear-filter-banner">清除筛选</button>
+    </div>
+    
+    <div class="filter-panel" id="filter-panel">
+      <details>
+        <summary class="filter-title">
+          <span>📅</span>
+          <span>时间筛选器 (点击展开/折叠)</span>
+        </summary>
+        <div class="filter-content-wrapper" style="margin-top: 15px;">
+            <div class="quick-filters" id="quick-filters">
+                <button class="quick-filter-btn" data-period="today">今天</button>
+                <button class="quick-filter-btn" data-period="yesterday">昨天</button>
+                <button class="quick-filter-btn" data-period="this_week">本周</button>
+                <button class="quick-filter-btn active" data-period="all">全部</button>
+            </div>
+          <div class="filter-container">
+            <!-- 日历部分 -->
+            <div class="calendar-section">
+              <div class="calendar-header">
+                <button class="calendar-nav-btn" id="prev-month">◀</button>
+                <div class="calendar-current" id="current-month">2024年1月</div>
+                <button class="calendar-nav-btn" id="next-month">▶</button>
+              </div>
+              <div class="calendar-grid" id="calendar-grid">
+                <div class="calendar-weekday">日</div>
+                <div class="calendar-weekday">一</div>
+                <div class="calendar-weekday">二</div>
+                <div class="calendar-weekday">三</div>
+                <div class="calendar-weekday">四</div>
+                <div class="calendar-weekday">五</div>
+                <div class="calendar-weekday">六</div>
+                <!-- 日期将由JS动态生成，直接添加到这个grid中 -->
+              </div>
+            </div>
+            
+            <!-- 小时选择部分 -->
+            <div class="hours-section" id="hours-section">
+              <div class="filter-title">🕐 选择小时</div>
+              <div class="hours-grid" id="hours-grid">
+                <!-- 0-23小时将由JS生成 -->
+              </div>
+              <div id="hours-placeholder"></div>
+            </div>
           </div>
         </div>
-        
-        <!-- 小时选择部分 -->
-        <div class="hours-section">
-          <div class="filter-title">🕐 选择小时</div>
-          <div class="hours-grid" id="hours-grid">
-            <!-- 0-23小时将由JS生成 -->
-          </div>
-        </div>
-      </div>
-      <div class="filter-actions">
-        <button class="btn-clear-filter" id="clear-filter">🔄 清除筛选</button>
-      </div>
+      </details>
     </div>
     
     <div id="loading" class="loading">

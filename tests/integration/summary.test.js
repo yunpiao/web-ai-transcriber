@@ -125,6 +125,104 @@ describe('浏览记录总结功能集成测试', () => {
     const result = await chrome.storage.sync.get('favoriteEngine');
     expect(result.favoriteEngine).toBe('gemini');
   });
+
+  describe('边界情况和降级处理', () => {
+    test('应该处理null的favoriteEngine', async () => {
+      await chrome.storage.sync.set({ favoriteEngine: null });
+      
+      const settings = await chrome.storage.sync.get({
+        favoriteEngine: 'qwen'
+      });
+      
+      // null会被存储，不会使用默认值
+      expect(settings.favoriteEngine).toBeNull();
+      
+      // 验证降级逻辑
+      const engineKey = settings.favoriteEngine || 'qwen';
+      expect(engineKey).toBe('qwen');
+    });
+
+    test('应该处理空字符串的favoriteEngine', async () => {
+      await chrome.storage.sync.set({ favoriteEngine: '' });
+      
+      const settings = await chrome.storage.sync.get({
+        favoriteEngine: 'qwen'
+      });
+      
+      // 空字符串会被存储
+      expect(settings.favoriteEngine).toBe('');
+      
+      // 验证降级逻辑
+      const engineKey = settings.favoriteEngine || 'qwen';
+      expect(engineKey).toBe('qwen');
+    });
+
+    test('应该处理无效的引擎名称', async () => {
+      const SEARCH_ENGINES = {
+        gemini: { url: 'https://gemini.google.com/app' },
+        qwen: { url: 'https://chat.qwen.ai/' },
+        deepseek: { url: 'https://chat.deepseek.com/' },
+        aistudio: { url: 'https://aistudio.google.com/app/prompts/new_chat' }
+      };
+      
+      await chrome.storage.sync.set({ favoriteEngine: 'chatgpt' });
+      
+      const settings = await chrome.storage.sync.get({
+        favoriteEngine: 'qwen'
+      });
+      
+      expect(settings.favoriteEngine).toBe('chatgpt');
+      
+      // 验证SEARCH_ENGINES查找和降级
+      const engineKey = settings.favoriteEngine || 'qwen';
+      const engine = SEARCH_ENGINES[engineKey];
+      
+      expect(engine).toBeUndefined();
+      
+      // 降级逻辑
+      const engineUrl = engine?.url || SEARCH_ENGINES['qwen'].url;
+      expect(engineUrl).toBe('https://chat.qwen.ai/');
+    });
+
+    test('所有默认值应该在SEARCH_ENGINES中存在', () => {
+      const SEARCH_ENGINES = {
+        gemini: { url: 'https://gemini.google.com/app' },
+        qwen: { url: 'https://chat.qwen.ai/' },
+        deepseek: { url: 'https://chat.deepseek.com/' },
+        aistudio: { url: 'https://aistudio.google.com/app/prompts/new_chat' }
+      };
+      
+      const defaultEngines = ['qwen'];  // 所有文件中使用的默认值
+      
+      defaultEngines.forEach(engineName => {
+        expect(SEARCH_ENGINES[engineName]).toBeDefined();
+        expect(SEARCH_ENGINES[engineName].url).toBeDefined();
+        expect(typeof SEARCH_ENGINES[engineName].url).toBe('string');
+      });
+    });
+
+    test('降级逻辑应该总是返回有效URL', () => {
+      const SEARCH_ENGINES = {
+        gemini: { url: 'https://gemini.google.com/app' },
+        qwen: { url: 'https://chat.qwen.ai/' },
+        deepseek: { url: 'https://chat.deepseek.com/' },
+        aistudio: { url: 'https://aistudio.google.com/app/prompts/new_chat' }
+      };
+      
+      // 测试各种无效值
+      const invalidValues = ['', null, undefined, 'invalid', 'google', 'chatgpt'];
+      
+      invalidValues.forEach(invalidValue => {
+        const engineKey = invalidValue || 'qwen';
+        const engine = SEARCH_ENGINES[engineKey];
+        const engineUrl = engine?.url || SEARCH_ENGINES['qwen'].url;
+        
+        expect(engineUrl).toBeDefined();
+        expect(typeof engineUrl).toBe('string');
+        expect(engineUrl.startsWith('http')).toBe(true);
+      });
+    });
+  });
 });
 
 

@@ -2,16 +2,17 @@
 
 ![网页 AI 转写器图标](smart-search-extension/icons/icon128.png)
 
-**版本**: 4.7  
+**版本**: 4.8  
 **最后更新**: 2025-10-21
 
-## 🆕 新功能（v4.7）
+## 🆕 新功能（v4.8）
 
 - ✅ **智能浏览记录**：自动记录停留5秒以上的网页
+- ✅ **浏览时长追踪**：自动记录在每个页面的停留时间
 - ✅ **历史管理面板**：查看、搜索、导出浏览历史
-- ✅ **完整测试体系**：47个自动化测试用例保障质量
+- ✅ **完整测试体系**：80+个自动化测试用例保障质量
 
-[查看完整更新日志](smart-search-extension/VERSION_4.7_CHANGELOG.md)
+[查看完整更新日志](RELEASE_NOTES.md)
 
 
 
@@ -48,8 +49,9 @@ web-ai-transcriber/
 - **深度思考功能**：支持启用 AI 的深度思考/搜索能力，获得更全面的内容处理结果
 - **灵活浏览模式**：可选择在当前页面进行转写，或在新标签页中打开
 
-### 浏览记录功能（🆕 v4.7）
+### 浏览记录功能（🆕 v4.8）
 - **自动记录**：页面停留5秒自动保存
+- **时长追踪**：自动记录每个页面的停留时间
 - **智能分组**：按日期分组（今天、昨天、本周、更早）
 - **快速搜索**：支持标题、URL、域名搜索
 - **数据导出**：导出为JSON格式备份
@@ -116,11 +118,12 @@ npm test
 ```
 
 **测试覆盖**：
-- 单元测试：22个用例
-- 集成测试：11个用例
-- E2E测试：14个用例
+- 单元测试：39个用例
+- 集成测试：30个用例
+- E2E测试：25个用例
+- **总计**：80+个测试用例
 
-[查看测试文档](README_TESTING.md) | [实施总结](IMPLEMENTATION_SUMMARY.md)
+[查看测试文档](docs/TESTING.md)
 
 ### 项目结构
 
@@ -136,10 +139,10 @@ chrome/
 ### 相关文档
 
 - 📖 [功能使用指南](smart-search-extension/FEATURE_USAGE.md)
-- 🧪 [测试文档](README_TESTING.md)
-- 📝 [实施总结](IMPLEMENTATION_SUMMARY.md)
+- 🧪 [测试完整指南](docs/TESTING.md)
 - 🚀 [快速开始](QUICKSTART.md)
-- 📋 [更新日志](smart-search-extension/VERSION_4.7_CHANGELOG.md)
+- 📋 [版本更新日志](RELEASE_NOTES.md)
+- 🚀 [GitHub发布指南](GITHUB_RELEASE_GUIDE.md)
 
 ---
 

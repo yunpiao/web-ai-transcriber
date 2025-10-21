@@ -1,0 +1,534 @@
+npm warn Unknown user config "home". This will stop working in the next major version of npm.
+
+> smart-search-extension@4.7.0 test:e2e:headless
+> HEADLESS=true jest --config=jest.e2e.config.js
+
+  console.warn
+    [1m[43m[30m
+      Degraded performance warning:[0m[33m
+      Launching Chrome on Mac Silicon (arm64) from an x64 Node installation results in
+      Rosetta translating the Chrome binary, even if Chrome is already arm64. This would
+      result in huge performance issues. To resolve this, you must run Puppeteer with
+      a version of Node built for arm64.
+
+      54 |   }
+      55 |   
+    > 56 |   const browser = await puppeteer.launch(launchOptions);
+         |                                   ^
+      57 |   
+      58 |   return browser;
+      59 | }
+
+      at ChromeLauncher.launch (node_modules/puppeteer-core/src/node/ChromeLauncher.ts:42:17)
+      at PuppeteerNode.launch (node_modules/puppeteer-core/src/node/PuppeteerNode.ts:164:27)
+      at launch (tests/e2e/setup.js:56:35)
+      at Object.launchBrowserWithExtension (tests/e2e/history.test.js:18:21)
+
+  console.warn
+    [1m[43m[30m
+      Degraded performance warning:[0m[33m
+      Launching Chrome on Mac Silicon (arm64) from an x64 Node installation results in
+      Rosetta translating the Chrome binary, even if Chrome is already arm64. This would
+      result in huge performance issues. To resolve this, you must run Puppeteer with
+      a version of Node built for arm64.
+
+      54 |   }
+      55 |   
+    > 56 |   const browser = await puppeteer.launch(launchOptions);
+         |                                   ^
+      57 |   
+      58 |   return browser;
+      59 | }
+
+      at ChromeLauncher.launch (node_modules/puppeteer-core/src/node/ChromeLauncher.ts:42:17)
+      at PuppeteerNode.launch (node_modules/puppeteer-core/src/node/PuppeteerNode.ts:164:27)
+      at launch (tests/e2e/setup.js:56:35)
+      at Object.launchBrowserWithExtension (tests/e2e/duration.test.js:17:21)
+
+  console.warn
+    [1m[43m[30m
+      Degraded performance warning:[0m[33m
+      Launching Chrome on Mac Silicon (arm64) from an x64 Node installation results in
+      Rosetta translating the Chrome binary, even if Chrome is already arm64. This would
+      result in huge performance issues. To resolve this, you must run Puppeteer with
+      a version of Node built for arm64.
+
+      54 |   }
+      55 |   
+    > 56 |   const browser = await puppeteer.launch(launchOptions);
+         |                                   ^
+      57 |   
+      58 |   return browser;
+      59 | }
+
+      at ChromeLauncher.launch (node_modules/puppeteer-core/src/node/ChromeLauncher.ts:42:17)
+      at PuppeteerNode.launch (node_modules/puppeteer-core/src/node/PuppeteerNode.ts:164:27)
+      at launch (tests/e2e/setup.js:56:35)
+      at Object.launchBrowserWithExtension (tests/e2e/options.test.js:18:21)
+
+  console.warn
+    [1m[43m[30m
+      Degraded performance warning:[0m[33m
+      Launching Chrome on Mac Silicon (arm64) from an x64 Node installation results in
+      Rosetta translating the Chrome binary, even if Chrome is already arm64. This would
+      result in huge performance issues. To resolve this, you must run Puppeteer with
+      a version of Node built for arm64.
+
+      54 |   }
+      55 |   
+    > 56 |   const browser = await puppeteer.launch(launchOptions);
+         |                                   ^
+      57 |   
+      58 |   return browser;
+      59 | }
+
+      at ChromeLauncher.launch (node_modules/puppeteer-core/src/node/ChromeLauncher.ts:42:17)
+      at PuppeteerNode.launch (node_modules/puppeteer-core/src/node/PuppeteerNode.ts:164:27)
+      at launch (tests/e2e/setup.js:56:35)
+      at Object.launchBrowserWithExtension (tests/e2e/summary.test.js:17:21)
+
+  console.warn
+    [1m[43m[30m
+      Degraded performance warning:[0m[33m
+      Launching Chrome on Mac Silicon (arm64) from an x64 Node installation results in
+      Rosetta translating the Chrome binary, even if Chrome is already arm64. This would
+      result in huge performance issues. To resolve this, you must run Puppeteer with
+      a version of Node built for arm64.
+
+      54 |   }
+      55 |   
+    > 56 |   const browser = await puppeteer.launch(launchOptions);
+         |                                   ^
+      57 |   
+      58 |   return browser;
+      59 | }
+
+      at ChromeLauncher.launch (node_modules/puppeteer-core/src/node/ChromeLauncher.ts:42:17)
+      at PuppeteerNode.launch (node_modules/puppeteer-core/src/node/PuppeteerNode.ts:164:27)
+      at launch (tests/e2e/setup.js:56:35)
+      at Object.launchBrowserWithExtension (tests/e2e/tracking.test.js:19:21)
+
+  console.log
+    🔧 扩展ID: foeipomgchnhopapcplnofafnifphfim
+
+      at Object.log (tests/e2e/summary.test.js:19:13)
+
+  console.log
+    Debug info: {
+      emptyStateExists: true,
+      emptyStateHidden: false,
+      timelineExists: true,
+      timelineHidden: true,
+      loadingHidden: true
+    }
+
+      at Object.log (tests/e2e/history.test.js:76:13)
+
+  console.log
+    ✅ 已启用页面追踪功能
+
+      at Object.log (tests/e2e/duration.test.js:30:13)
+
+  console.log
+    初始记录数: 0
+
+      at Object.log (tests/e2e/tracking.test.js:61:13)
+
+  console.log
+    页面已加载，等待6秒记录...
+
+      at Object.log (tests/e2e/tracking.test.js:75:13)
+
+  console.log
+    ✅ 已启用页面追踪
+
+      at Object.log (tests/e2e/summary.test.js:81:15)
+
+  console.log
+    等待完成，检查记录...
+
+      at Object.log (tests/e2e/tracking.test.js:80:13)
+
+PASS tests/e2e/options.test.js (24.849 s)
+  设置页面E2E测试
+    ✓ 应该能够打开设置页面 (3458 ms)
+    ✓ 应该能够启用页面追踪功能 (3411 ms)
+    ✓ 应该能够切换搜索引擎选项 (4958 ms)
+    ✓ 应该能够查看历史记录链接 (2289 ms)
+    ✓ 应该能够启用深度思考功能 (4835 ms)
+
+  console.log
+    最终记录数: 0
+
+      at Object.log (tests/e2e/tracking.test.js:88:13)
+
+  console.log
+    🔧 扩展ID: foeipomgchnhopapcplnofafnifphfim
+
+      at Object.log (tests/e2e/tracking.test.js:128:13)
+
+  console.log
+    📄 访问成功: https://www.baidu.com
+
+      at Object.log (tests/e2e/summary.test.js:100:17)
+
+  console.log
+    ⚙️  配置页面状态: { hasEnableCheckbox: true, hasSaveButton: true }
+
+      at Object.log (tests/e2e/tracking.test.js:141:13)
+
+  console.log
+    ✅ 配置已保存，追踪功能启用: true
+
+      at Object.log (tests/e2e/tracking.test.js:151:13)
+
+  console.log
+    📄 已打开测试页面
+
+      at Object.log (tests/e2e/duration.test.js:56:13)
+
+  console.log
+    📄 访问成功: https://example.com
+
+      at Object.log (tests/e2e/summary.test.js:100:17)
+
+  console.log
+    ✅ 初始记录数: 0
+
+      at Object.log (tests/e2e/tracking.test.js:159:13)
+
+  console.log
+    🌐 正在访问 baidu.com...
+
+      at Object.log (tests/e2e/tracking.test.js:173:13)
+
+  console.log
+    ⏱️ 已停留6秒
+
+      at Object.log (tests/e2e/duration.test.js:60:13)
+
+  console.log
+    ✅ 发现 1 条记录
+
+      at Object.log (tests/e2e/duration.test.js:71:13)
+
+  console.log
+    ✅ 记录包含时长信息
+
+      at Object.log (tests/e2e/duration.test.js:80:13)
+
+  console.log
+    ✅ 成功访问 2/2 个页面
+
+      at Object.log (tests/e2e/summary.test.js:110:13)
+
+  console.log
+    时长显示: [ '⏱️ 1小时1分', '⏱️ 2分30秒', '⏱️ 30秒' ]
+
+      at Object.log (tests/e2e/duration.test.js:150:13)
+
+  console.log
+    ✅ 时长格式化正确
+
+      at Object.log (tests/e2e/duration.test.js:157:13)
+
+  console.log
+    📊 今天的记录数: 1
+
+      at Object.log (tests/e2e/summary.test.js:132:13)
+
+  console.log
+    💬 提示信息: 总结失败：Cannot read properties of undefined (reading 'url')
+
+      at log (tests/e2e/summary.test.js:139:17)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+  console.log
+    ✅ 时长图标和样式正确
+
+      at Object.log (tests/e2e/duration.test.js:210:13)
+
+  console.log
+    📦 点击前的storage: {
+      skipPromptTemplate: true,
+      tempSearchText: '请帮我总结一下今天（2025-10-21）的浏览记录，共浏览了 1 个网页。以下是详细的浏览记录：\n' +
+        '\n' +
+        '1. [16:39] Example Domain\n' +
+        '   网址: https://example.com/\n' +
+        '   域名: example.com\n' +
+        '   内容摘要: Example Domain This domain is for use in documentation examples without needing permission. Avoid use in operations. Learn more\n' +
+        '\n' +
+        '\n' +
+        '请根据以上浏览记录，总结今天的浏览主题和关注重点，并给出以下内容：\n' +
+        '1. 主要浏览的网站和类型\n' +
+        '2. 关注的主要话题或领域\n' +
+        '3. 浏览时间分布特点\n' +
+        '4. 建议和洞察（如果有的话）'
+    }
+
+      at Object.log (tests/e2e/summary.test.js:186:15)
+
+  console.log
+    ✅ 正确处理旧记录: ⏱️ 未记录
+
+      at Object.log (tests/e2e/duration.test.js:253:13)
+
+PASS tests/e2e/duration.test.js (60.965 s)
+  浏览时长功能E2E测试
+    ✓ 应该在停留5秒后创建包含时长的记录 (37284 ms)
+    ✓ 应该在历史记录页面显示格式化的时长 (3872 ms)
+    ✓ 应该显示时长图标和样式 (3981 ms)
+    ✓ 应该正确处理没有时长的旧记录 (4084 ms)
+
+  console.log
+    📦 点击后的storage: {
+      skipPromptTemplate: true,
+      tempSearchText: '请帮我总结一下今天（2025-10-21）的浏览记录，共浏览了 1 个网页。以下是详细的浏览记录：\n' +
+        '\n' +
+        '1. [16:39] Example Domain\n' +
+        '   网址: https://example.com/\n' +
+        '   域名: example.com\n' +
+        '   内容摘要: Example Domain This domain is for use in documentation examples without needing permission. Avoid use in operations. Learn more\n' +
+        '\n' +
+        '\n' +
+        '请根据以上浏览记录，总结今天的浏览主题和关注重点，并给出以下内容：\n' +
+        '1. 主要浏览的网站和类型\n' +
+        '2. 关注的主要话题或领域\n' +
+        '3. 浏览时间分布特点\n' +
+        '4. 建议和洞察（如果有的话）'
+    }
+
+      at Object.log (tests/e2e/summary.test.js:204:15)
+
+  console.log
+    ⚠️ 页面加载出错: Navigation timeout of 20000 ms exceeded
+
+      at Object.log (tests/e2e/tracking.test.js:211:15)
+
+  console.log
+    ⚠️ 这可能是网络问题或headless模式限制，测试将验证基本功能
+
+      at Object.log (tests/e2e/tracking.test.js:212:15)
+
+  console.log
+    ✓ 关闭测试页面
+
+      at Object.log (tests/e2e/tracking.test.js:220:13)
+
+  console.log
+    ⏱️  等待2秒让数据写入数据库...
+
+      at Object.log (tests/e2e/tracking.test.js:224:13)
+
+  console.log
+    📝 总结文本长度: 352
+
+      at Object.log (tests/e2e/summary.test.js:249:17)
+
+FAIL tests/e2e/summary.test.js (68.219 s)
+  浏览记录总结功能E2E测试
+    ✓ 应该能够在历史记录页面显示总结按钮 (5592 ms)
+    ✓ 应该能够在没有记录时显示提示 (2994 ms)
+    ✓ 应该能够生成真实的浏览记录 (34984 ms)
+    ✕ 应该能够点击总结按钮并生成总结 (8083 ms)
+    ✓ 应该能够将总结数据保存到storage (5267 ms)
+    ✓ 应该能够验证总结文本的格式 (5288 ms)
+
+  ● 浏览记录总结功能E2E测试 › 应该能够点击总结按钮并生成总结
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "已准备好今天的浏览总结"
+    Received string:    "总结失败：Cannot read properties of undefined (reading 'url')"
+
+      149 |
+      150 |       // 验证提示信息
+    > 151 |       expect(alertMessage).toContain('已准备好今天的浏览总结');
+          |                            ^
+      152 |       expect(alertMessage).toContain('条记录');
+      153 |     } else {
+      154 |       console.log('⚠️  今天没有浏览记录，跳过总结测试');
+
+      at Object.toContain (tests/e2e/summary.test.js:151:28)
+
+  console.log
+    📊 最终记录数: 0
+
+      at Object.log (tests/e2e/tracking.test.js:231:13)
+
+  console.log
+    ⚠️ 页面未成功加载，跳过记录验证
+
+      at Object.log (tests/e2e/tracking.test.js:253:15)
+
+  console.log
+    历史记录总数: 0
+
+      at Object.log (tests/e2e/tracking.test.js:272:13)
+
+  console.log
+    页面状态: { emptyVisible: true, timelineVisible: false, count: 0 }
+
+      at Object.log (tests/e2e/tracking.test.js:290:13)
+
+PASS tests/e2e/tracking.test.js (78.207 s)
+  追踪功能E2E测试
+    ✓ 应该能够启用追踪功能 (5862 ms)
+    ✓ 应该在页面停留5秒后记录 (14663 ms)
+    ✓ 应该在功能禁用时不记录 (8578 ms)
+    ✓ 应该能够访问真实网页并创建记录 (38119 ms)
+    ✓ 应该能够打开历史记录并查看统计 (5131 ms)
+
+FAIL tests/e2e/history.test.js (99.601 s)
+  历史记录页面E2E测试
+    ✓ 应该能够打开历史记录页面 (3687 ms)
+    ✓ 应该显示空状态或记录列表 (1364 ms)
+    ✓ 应该显示统计信息 (2788 ms)
+    ✓ 搜索框应该存在且可输入 (2064 ms)
+    ✓ 导出按钮应该可点击 (1982 ms)
+    ✓ 导出功能应该能够导出数据 (5388 ms)
+    ✕ 筛选后点击清除应该显示所有数据 (5255 ms)
+    ✓ 应该显示日历组件 (4386 ms)
+    ✕ 应该显示24小时选择器 (3199 ms)
+    ✕ 应该能够点击日历日期 (2570 ms)
+    ✕ 应该能够点击小时按钮 (2600 ms)
+    ✕ 应该能够切换月份 (3139 ms)
+    ✕ 清除筛选按钮应该能够重置所有筛选 (3828 ms)
+    ✕ 日期筛选应该能够正确过滤数据 (6857 ms)
+    ✓ 小时筛选应该能够正确过滤数据 (6356 ms)
+    ✓ 日历应该标记有记录的日期 (3834 ms)
+    UI优化功能E2E测试
+      ✓ 筛选器应该默认折叠 (1768 ms)
+      ✓ 点击筛选器标题应该能够展开/折叠 (2269 ms)
+      ✓ 无筛选时横幅应该隐藏 (1758 ms)
+      ✓ 搜索时应该显示筛选横幅 (3477 ms)
+      ✓ 点击快速筛选应该显示横幅 (3487 ms)
+      ✓ 横幅的清除按钮应该能够清除筛选 (3875 ms)
+      ✓ 未来月份的下一月按钮应该被禁用 (2435 ms)
+      ✓ 应该能够选择过去的月份 (2776 ms)
+      ✓ 快捷筛选按钮应该有正确的active状态 (2269 ms)
+      ✓ 选择日期后快速筛选应该被清除 (3259 ms)
+      ✓ 横幅应该显示组合筛选条件 (4777 ms)
+      ✓ 小时选择器在未选择日期时应该显示提示 (2255 ms)
+
+  ● 历史记录页面E2E测试 › 筛选后点击清除应该显示所有数据
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 2
+
+      246 |       // 应该只显示1条记录
+      247 |       cardCount = await page.$$eval('.history-card', cards => cards.length);
+    > 248 |       expect(cardCount).toBe(1);
+          |                         ^
+      249 |       
+      250 |       // 点击清除筛选按钮
+      251 |       await page.click('#clear-filter');
+
+      at Object.toBe (tests/e2e/history.test.js:248:25)
+
+  ● 历史记录页面E2E测试 › 应该显示24小时选择器
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 24
+    Received: 0
+
+      307 |     // 检查是否生成24个小时按钮
+      308 |     const hourButtons = await page.$$('.hour-btn');
+    > 309 |     expect(hourButtons.length).toBe(24);
+          |                                ^
+      310 |     
+      311 |     await page.close();
+      312 |   });
+
+      at Object.toBe (tests/e2e/history.test.js:309:32)
+
+  ● 历史记录页面E2E测试 › 应该能够点击日历日期
+
+    expect(received).not.toBeNull()
+
+    Received: null
+
+      326 |     // 检查是否有选中状态
+      327 |     const selectedDay = await page.$('.calendar-day.selected');
+    > 328 |     expect(selectedDay).not.toBeNull();
+          |                             ^
+      329 |     
+      330 |     await page.close();
+      331 |   });
+
+      at Object.toBeNull (tests/e2e/history.test.js:328:29)
+
+  ● 历史记录页面E2E测试 › 应该能够点击小时按钮
+
+    expect(received).not.toBeNull()
+
+    Received: null
+
+      345 |     // 点击第一个小时按钮
+      346 |     const firstHour = await page.$('.hour-btn[data-hour="0"]');
+    > 347 |     expect(firstHour).not.toBeNull();
+          |                           ^
+      348 |     
+      349 |     await firstHour.click();
+      350 |     await wait(500);
+
+      at Object.toBeNull (tests/e2e/history.test.js:347:27)
+
+  ● 历史记录页面E2E测试 › 应该能够切换月份
+
+    expect(received).not.toBe(expected) // Object.is equality
+
+    Expected: not "2025年10月"
+
+      370 |     
+      371 |     const newMonth = await page.$eval('#current-month', el => el.textContent);
+    > 372 |     expect(newMonth).not.toBe(initialMonth);
+          |                          ^
+      373 |     
+      374 |     // 点击上一月
+      375 |     await page.click('#prev-month');
+
+      at Object.toBe (tests/e2e/history.test.js:372:26)
+
+  ● 历史记录页面E2E测试 › 清除筛选按钮应该能够重置所有筛选
+
+    No element found for selector: #clear-filter
+
+      399 |     
+      400 |     // 点击清除筛选
+    > 401 |     await page.click('#clear-filter');
+          |     ^
+      402 |     await wait(500);
+      403 |     
+      404 |     // 验证筛选已清除
+
+      at assert (node_modules/puppeteer-core/src/util/assert.ts:19:11)
+      at CdpFrame.click (node_modules/puppeteer-core/src/api/Frame.ts:1065:11)
+      at Object.<anonymous> (tests/e2e/history.test.js:401:5)
+
+  ● 历史记录页面E2E测试 › 日期筛选应该能够正确过滤数据
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 3
+
+      483 |       // 应该只显示今天的2条记录
+      484 |       cardCount = await page.$$eval('.history-card', cards => cards.length);
+    > 485 |       expect(cardCount).toBe(2);
+          |                         ^
+      486 |     }
+      487 |     
+      488 |     // 清理测试数据
+
+      at Object.toBe (tests/e2e/history.test.js:485:25)
+
+Test Suites: 2 failed, 3 passed, 5 total
+Tests:       8 failed, 40 passed, 48 total
+Snapshots:   0 total
+Time:        99.853 s, estimated 412 s
+Ran all test suites.

@@ -7,6 +7,7 @@ let currentSearchQuery = ''; // 当前搜索关键词
 let selectedDate = null; // 选中的日期 (Date对象)
 let selectedHour = null; // 选中的小时 (0-23)
 let currentMonth = new Date(); // 当前显示的月份
+let activeQuickFilter = 'all'; // 'today', 'yesterday', 'this_week', 'all'
 
 // 格式化时间
 function formatTime(timestamp) {
@@ -23,6 +24,34 @@ function formatDate(timestamp) {
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const day = date.getDate().toString().padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+// 格式化停留时长
+function formatDuration(seconds) {
+  if (!seconds || seconds < 0) {
+    return '0秒';
+  }
+  
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  
+  if (hours > 0) {
+    // 超过1小时：X小时X分
+    if (minutes > 0) {
+      return `${hours}小时${minutes}分`;
+    }
+    return `${hours}小时`;
+  } else if (minutes > 0) {
+    // 1分钟到1小时：X分X秒
+    if (secs > 0) {
+      return `${minutes}分${secs}秒`;
+    }
+    return `${minutes}分`;
+  } else {
+    // 小于1分钟：X秒
+    return `${secs}秒`;
+  }
 }
 
 // 获取相对日期标签
@@ -80,6 +109,10 @@ function renderHistoryCard(record) {
     (record.content.length > 200 ? record.content.substring(0, 200) + '...' : record.content) : 
     '无内容';
   
+  // 格式化停留时长
+  const durationText = record.duration ? formatDuration(record.duration) : '未记录';
+  const durationClass = record.duration ? 'card-duration' : 'card-duration-empty';
+  
   card.innerHTML = `
     <div class="card-header">
       <img src="${record.favicon}" class="favicon" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>'">
@@ -90,6 +123,7 @@ function renderHistoryCard(record) {
     <div>
       <span class="card-domain">${record.domain}</span>
       <span style="font-size: 12px; color: #999;">${formatDate(record.visitTime)}</span>
+      <span class="${durationClass}" title="页面停留时长">⏱️ ${durationText}</span>
     </div>
     <div class="card-content">${contentPreview}</div>
     <div class="card-actions">
@@ -176,14 +210,52 @@ function updateStats() {
   document.getElementById('total-count').textContent = allRecords.length;
 }
 
-// 更新筛选信息
+// 更新筛选信息和横幅
 function updateFilterInfo() {
   const filteredInfo = document.getElementById('filtered-info');
-  if (filteredRecords.length < allRecords.length) {
+  const banner = document.getElementById('filter-active-banner');
+  const bannerText = document.getElementById('banner-text');
+  
+  // 判断是否有激活的筛选
+  const hasActiveFilter = (
+    currentSearchQuery.trim() !== '' ||
+    selectedDate !== null ||
+    selectedHour !== null ||
+    (activeQuickFilter && activeQuickFilter !== 'all')
+  );
+  
+  if (filteredRecords.length < allRecords.length || hasActiveFilter) {
     filteredInfo.textContent = `(已筛选出 ${filteredRecords.length} 条)`;
     filteredInfo.style.color = '#1a73e8';
+    
+    // 显示筛选横幅
+    banner.classList.remove('hidden');
+    
+    // 生成筛选描述
+    let filterDesc = [];
+    if (currentSearchQuery.trim()) {
+      filterDesc.push(`搜索"${currentSearchQuery}"`);
+    }
+    if (activeQuickFilter && activeQuickFilter !== 'all') {
+      const periodNames = {
+        'today': '今天',
+        'yesterday': '昨天',
+        'this_week': '本周'
+      };
+      filterDesc.push(periodNames[activeQuickFilter]);
+    } else if (selectedDate) {
+      filterDesc.push(formatDate(selectedDate.getTime()));
+      if (selectedHour !== null) {
+        filterDesc.push(`${selectedHour}点`);
+      }
+    }
+    
+    bannerText.textContent = filterDesc.length > 0 
+      ? `筛选条件: ${filterDesc.join(' + ')} (共 ${filteredRecords.length} 条)`
+      : `已筛选出 ${filteredRecords.length} 条记录`;
   } else {
     filteredInfo.textContent = '';
+    banner.classList.add('hidden');
   }
 }
 
@@ -194,6 +266,20 @@ function renderCalendar() {
   
   // 更新月份显示
   document.getElementById('current-month').textContent = `${year}年${month + 1}月`;
+  
+  // 检查是否可以切换到下个月（限制未来月份）
+  const now = new Date();
+  const nextMonth = new Date(year, month + 1, 1);
+  const nextMonthBtn = document.getElementById('next-month');
+  if (nextMonth > now) {
+    nextMonthBtn.disabled = true;
+    nextMonthBtn.style.opacity = '0.3';
+    nextMonthBtn.style.cursor = 'not-allowed';
+  } else {
+    nextMonthBtn.disabled = false;
+    nextMonthBtn.style.opacity = '1';
+    nextMonthBtn.style.cursor = 'pointer';
+  }
   
   // 获取当月第一天和最后一天
   const firstDay = new Date(year, month, 1);
@@ -222,7 +308,7 @@ function renderCalendar() {
   }
   
   // 填充当月日期
-  const today = new Date();
+  const today = now;
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month, day);
     const dayDiv = document.createElement('div');
@@ -269,8 +355,22 @@ function renderCalendar() {
 // 生成24小时选择器
 function renderHours() {
   const hoursGrid = document.getElementById('hours-grid');
+  const hoursSection = document.getElementById('hours-section');
+  const placeholder = document.getElementById('hours-placeholder');
   hoursGrid.innerHTML = '';
-  
+
+  if (!selectedDate) {
+    hoursSection.classList.add('disabled');
+    placeholder.textContent = '请先在左侧选择一个日期';
+    hoursGrid.style.display = 'none';
+    placeholder.style.display = 'flex';
+    return;
+  }
+
+  hoursSection.classList.remove('disabled');
+  hoursGrid.style.display = 'grid';
+  placeholder.style.display = 'none';
+
   // 获取选中日期的小时记录
   const hourCounts = getHourCounts();
   
@@ -326,6 +426,7 @@ function getHourCounts() {
 function selectDate(date) {
   selectedDate = date;
   selectedHour = null; // 切换日期时清除小时选择
+  updateQuickFilterUI(null);
   renderCalendar();
   renderHours();
   applyFilters();
@@ -348,8 +449,32 @@ function clearFilters() {
   selectedHour = null;
   currentSearchQuery = '';
   document.getElementById('search-input').value = '';
+  updateQuickFilterUI('all');
   renderCalendar();
   renderHours();
+  applyFilters();
+}
+
+// 更新快速筛选按钮的UI
+function updateQuickFilterUI(period) {
+  activeQuickFilter = period;
+  document.querySelectorAll('.quick-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.period === period);
+  });
+}
+
+// 处理快速筛选点击
+function handleQuickFilterClick(period) {
+  updateQuickFilterUI(period);
+
+  // 重置日历选择
+  if (selectedDate) {
+    selectedDate = null;
+    selectedHour = null;
+    renderCalendar();
+    renderHours();
+  }
+  
   applyFilters();
 }
 
@@ -378,8 +503,37 @@ function searchRecords(query) {
 function applyFilters() {
   let results = [...allRecords];
   
-  // 应用日期筛选
-  if (selectedDate) {
+  // 优先应用快速筛选
+  if (activeQuickFilter && activeQuickFilter !== 'all') {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (activeQuickFilter === 'today') {
+      results = results.filter(r => {
+        const recordDate = new Date(r.visitTime);
+        recordDate.setHours(0, 0, 0, 0);
+        return recordDate.getTime() === today.getTime();
+      });
+    } else if (activeQuickFilter === 'yesterday') {
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      results = results.filter(r => {
+        const recordDate = new Date(r.visitTime);
+        recordDate.setHours(0, 0, 0, 0);
+        return recordDate.getTime() === yesterday.getTime();
+      });
+    } else if (activeQuickFilter === 'this_week') {
+      const firstDayOfWeek = new Date(today);
+      firstDayOfWeek.setDate(today.getDate() - today.getDay()); // 周日为一周第一天
+      results = results.filter(r => {
+        const recordDate = new Date(r.visitTime);
+        recordDate.setHours(0, 0, 0, 0);
+        return recordDate.getTime() >= firstDayOfWeek.getTime();
+      });
+    }
+  }
+  // 如果没有激活快速筛选，则应用日期选择器筛选
+  else if (selectedDate) {
     results = results.filter(record => {
       const recordDate = new Date(record.visitTime);
       return isSameDay(recordDate, selectedDate);
@@ -450,50 +604,70 @@ async function clearAll() {
   }
 }
 
-// 总结今天的浏览记录
+// 总结筛选后的浏览记录
 async function summarizeToday() {
   try {
-    // 获取今天的记录
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // 过滤并验证记录
-    const todayRecords = allRecords.filter(record => {
-      if (!record || !record.visitTime) return false;
-      const recordDate = new Date(record.visitTime);
-      recordDate.setHours(0, 0, 0, 0);
-      return recordDate.getTime() === today.getTime();
+    // 使用当前筛选后的记录
+    const recordsToSummarize = filteredRecords.filter(record => {
+      return record && record.visitTime && record.url; // 确保记录有效
     });
     
-    if (todayRecords.length === 0) {
-      alert('今天还没有浏览记录');
+    if (recordsToSummarize.length === 0) {
+      alert('当前筛选结果为空，没有可总结的记录');
       return;
     }
     
+    // 生成筛选条件描述
+    let filterDescription = '';
+    if (currentSearchQuery.trim()) {
+      filterDescription += `搜索"${currentSearchQuery}"`;
+    }
+    if (activeQuickFilter && activeQuickFilter !== 'all') {
+      const periodNames = {
+        'today': '今天',
+        'yesterday': '昨天',
+        'this_week': '本周'
+      };
+      if (filterDescription) filterDescription += ' + ';
+      filterDescription += periodNames[activeQuickFilter];
+    } else if (selectedDate) {
+      if (filterDescription) filterDescription += ' + ';
+      filterDescription += formatDate(selectedDate.getTime());
+      if (selectedHour !== null) {
+        filterDescription += ` ${selectedHour}点`;
+      }
+    }
+    
+    // 如果没有任何筛选条件，说明是全部记录
+    if (!filterDescription) {
+      filterDescription = '全部';
+    }
+    
     // 生成总结提示词
-    let summaryText = `请帮我总结一下今天（${formatDate(Date.now())}）的浏览记录，共浏览了 ${todayRecords.length} 个网页。以下是详细的浏览记录：\n\n`;
+    let summaryText = `请帮我总结以下浏览记录（筛选条件：${filterDescription}），共 ${recordsToSummarize.length} 个网页。以下是详细的浏览记录：\n\n`;
     
     // 按时间顺序排序
-    const sortedRecords = [...todayRecords].sort((a, b) => a.visitTime - b.visitTime);
+    const sortedRecords = [...recordsToSummarize].sort((a, b) => a.visitTime - b.visitTime);
     
-    // 添加每条记录的信息
+    // 添加每条记录的完整信息（不截断内容）
     sortedRecords.forEach((record, index) => {
-      if (!record) return; // 防御性检查
-      
-      summaryText += `${index + 1}. [${formatTime(record.visitTime)}] ${record.title || '无标题'}\n`;
-      summaryText += `   网址: ${record.url || '无网址'}\n`;
+      summaryText += `${index + 1}. [${formatDate(record.visitTime)} ${formatTime(record.visitTime)}] ${record.title || '无标题'}\n`;
+      summaryText += `   网址: ${record.url}\n`;
       summaryText += `   域名: ${record.domain || '未知域名'}\n`;
+      
+      // 添加停留时长信息
+      if (record.duration) {
+        summaryText += `   停留时长: ${formatDuration(record.duration)}\n`;
+      }
+      
+      // 使用完整内容，不截断
       if (record.content && record.content.trim()) {
-        // 限制内容长度，避免过长
-        const contentPreview = record.content.length > 150 
-          ? record.content.substring(0, 150) + '...' 
-          : record.content;
-        summaryText += `   内容摘要: ${contentPreview}\n`;
+        summaryText += `   页面内容: ${record.content}\n`;
       }
       summaryText += '\n';
     });
     
-    summaryText += '\n请根据以上浏览记录，总结今天的浏览主题和关注重点，并给出以下内容：\n';
+    summaryText += '\n请根据以上浏览记录，总结浏览主题和关注重点，并给出以下内容：\n';
     summaryText += '1. 主要浏览的网站和类型\n';
     summaryText += '2. 关注的主要话题或领域\n';
     summaryText += '3. 浏览时间分布特点\n';
@@ -512,27 +686,19 @@ async function summarizeToday() {
       useCurrentTab: false
     });
     
-    // 定义搜索引擎URL
-    const SEARCH_ENGINES = {
-      gemini: { url: 'https://gemini.google.com/app' },
-      qwen: { url: 'https://chat.qwen.ai/' },
-      deepseek: { url: 'https://chat.deepseek.com/' },
-      aistudio: { url: 'https://aistudio.google.com/app/prompts/new_chat' }
-    };
-    
-    const engineUrl = SEARCH_ENGINES[settings.favoriteEngine].url;
-    
     // 提示用户
-    alert(`已准备好今天的浏览总结（${todayRecords.length} 条记录），即将打开转写界面...`);
+    alert(`已准备好浏览总结（${recordsToSummarize.length} 条记录，筛选条件：${filterDescription}），即将打开转写界面...`);
     
-    // 根据用户设置决定打开方式
-    if (settings.useCurrentTab) {
-      // 在当前页面打开
-      window.location.href = engineUrl;
-    } else {
-      // 在新标签页打开
-      window.open(engineUrl, '_blank');
-    }
+    // 通过 background.js 打开AI页面，确保 content.js 正确注入
+    chrome.runtime.sendMessage({
+      action: 'openSummaryPage',
+      engineKey: settings.favoriteEngine
+    }, (response) => {
+      if (response && !response.success) {
+        console.error('[总结功能] 打开页面失败:', response.error);
+        alert('打开转写界面失败：' + response.error);
+      }
+    });
     
   } catch (error) {
     console.error('总结失败:', error);
@@ -552,6 +718,11 @@ async function init() {
     allRecords = await getAllHistory();
     filteredRecords = [...allRecords];
     
+    // 如果没有记录，则隐藏筛选器
+    if (allRecords.length === 0) {
+      document.getElementById('filter-panel').classList.add('hidden');
+    }
+    
     // 隐藏加载状态
     document.getElementById('loading').classList.add('hidden');
     
@@ -564,6 +735,12 @@ async function init() {
     renderHours();
     
     // 绑定全局事件
+    document.getElementById('quick-filters').addEventListener('click', (e) => {
+      if (e.target.classList.contains('quick-filter-btn')) {
+        handleQuickFilterClick(e.target.dataset.period);
+      }
+    });
+
     document.getElementById('search-input').addEventListener('input', (e) => {
       searchRecords(e.target.value);
     });
@@ -575,12 +752,15 @@ async function init() {
     });
     
     document.getElementById('next-month').addEventListener('click', () => {
-      currentMonth.setMonth(currentMonth.getMonth() + 1);
-      renderCalendar();
+      const nextMonthBtn = document.getElementById('next-month');
+      if (!nextMonthBtn.disabled) {
+        currentMonth.setMonth(currentMonth.getMonth() + 1);
+        renderCalendar();
+      }
     });
     
-    // 清除筛选
-    document.getElementById('clear-filter').addEventListener('click', clearFilters);
+    // 横幅清除筛选按钮
+    document.getElementById('clear-filter-banner').addEventListener('click', clearFilters);
     
     document.getElementById('export-btn').addEventListener('click', exportData);
     document.getElementById('clear-btn').addEventListener('click', clearAll);

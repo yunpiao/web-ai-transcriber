@@ -51,7 +51,7 @@ function save_options() {
 // 从 chrome.storage 读取已保存的选项并显示
 function restore_options() {
   chrome.storage.sync.get({
-    favoriteEngine: 'google', // 默认值是 'google'
+    favoriteEngine: 'qwen', // 默认值是 'qwen'（与SEARCH_ENGINES保持一致）
     promptTemplate: DEFAULT_PROMPT, // 默认提示词
     enabledeepThinking: false, // 默认不启用深度搜索
     useCurrentTab: false, // 默认不在当前页面打开

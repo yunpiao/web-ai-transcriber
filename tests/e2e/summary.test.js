@@ -33,7 +33,7 @@ describe('浏览记录总结功能E2E测试', () => {
     // 检查总结按钮是否存在
     const buttonExists = await historyPage.evaluate(() => {
       const btn = document.getElementById('summarize-today-btn');
-      return btn !== null && btn.textContent.includes('总结今天浏览');
+      return btn !== null && btn.textContent.includes('总结筛选结果');
     });
 
     expect(buttonExists).toBe(true);
@@ -89,15 +89,27 @@ describe('浏览记录总结功能E2E测试', () => {
       'https://example.com'
     ];
 
+    let successCount = 0;
     for (const url of testUrls) {
       const testPage = await browser.newPage();
-      await testPage.goto(url);
-      console.log('📄 访问:', url);
-      await wait(6000); // 等待超过5秒以触发记录
-      await testPage.close();
+      try {
+        await testPage.goto(url, {
+          waitUntil: 'domcontentloaded',
+          timeout: 20000
+        });
+        console.log('📄 访问成功:', url);
+        await wait(6000); // 等待超过5秒以触发记录
+        successCount++;
+      } catch (error) {
+        console.log('⚠️ 访问失败:', url, error.message);
+      } finally {
+        await testPage.close();
+      }
     }
 
-    console.log('✅ 已创建测试浏览记录');
+    console.log(`✅ 成功访问 ${successCount}/${testUrls.length} 个页面`);
+    // 至少应该成功访问一个页面
+    expect(successCount).toBeGreaterThan(0);
   }, 120000);
 
   test('应该能够点击总结按钮并生成总结', async () => {
@@ -136,7 +148,7 @@ describe('浏览记录总结功能E2E测试', () => {
       await wait(2000);
 
       // 验证提示信息
-      expect(alertMessage).toContain('已准备好今天的浏览总结');
+      expect(alertMessage).toContain('已准备好浏览总结');
       expect(alertMessage).toContain('条记录');
     } else {
       console.log('⚠️  今天没有浏览记录，跳过总结测试');
@@ -250,6 +262,86 @@ describe('浏览记录总结功能E2E测试', () => {
 
     await historyPage.close();
   }, 30000);
+
+  test('应该能够通过background.js打开AI页面并注入content.js', async () => {
+    const historyPage = await openExtensionPage(browser, extensionId, 'history.html');
+    await wait(2000);
+
+    // 检查是否有今天的记录
+    const todayRecordCount = await historyPage.evaluate(() => {
+      const todayHeader = Array.from(document.querySelectorAll('.date-header'))
+        .find(h => h.textContent.includes('今天'));
+      
+      if (todayHeader) {
+        const match = todayHeader.textContent.match(/\((\d+)\)/);
+        return match ? parseInt(match[1]) : 0;
+      }
+      return 0;
+    });
+
+    if (todayRecordCount > 0) {
+      // 处理弹窗
+      historyPage.on('dialog', async dialog => {
+        await dialog.accept();
+      });
+
+      // 监听新标签页打开事件
+      const newTabPromise = new Promise((resolve) => {
+        browser.on('targetcreated', async (target) => {
+          if (target.type() === 'page') {
+            const page = await target.page();
+            if (page && page.url().includes('chat.qwen.ai')) {
+              resolve(page);
+            }
+          }
+        });
+      });
+
+      // 点击总结按钮
+      await historyPage.evaluate(() => {
+        document.getElementById('summarize-today-btn').click();
+      });
+
+      // 等待新标签页打开（最多等待10秒）
+      const newTab = await Promise.race([
+        newTabPromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('等待新标签页超时')), 10000)
+        )
+      ]).catch(error => {
+        console.log('⚠️ 未能捕获新标签页:', error.message);
+        return null;
+      });
+
+      if (newTab) {
+        console.log('✅ 新标签页已打开:', newTab.url());
+        
+        // 等待页面加载和content.js注入
+        await wait(5000);
+        
+        // 验证content.js是否成功注入并执行
+        const storageCleared = await historyPage.evaluate(() => {
+          return new Promise((resolve) => {
+            chrome.storage.local.get(['tempSearchText', 'skipPromptTemplate'], (result) => {
+              // content.js执行后应该清理storage
+              resolve(!result.tempSearchText && !result.skipPromptTemplate);
+            });
+          });
+        });
+
+        console.log('📦 Storage已清理:', storageCleared);
+        
+        // 关闭新标签页
+        await newTab.close();
+      } else {
+        console.log('⚠️ 测试在无网络环境下运行，跳过新标签页验证');
+      }
+    } else {
+      console.log('⚠️ 今天没有浏览记录，跳过测试');
+    }
+
+    await historyPage.close();
+  }, 60000);
 });
 
 

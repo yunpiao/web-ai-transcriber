@@ -39,7 +39,17 @@ async function handleSearch(tab) {
     });
     
     // 4. 根据配置打开对应的搜索引擎页面
-    const engineUrl = SEARCH_ENGINES[settings.favoriteEngine].url;
+    // 防御性检查：确保引擎配置有效
+    const engineKey = settings.favoriteEngine || 'qwen';
+    const engine = SEARCH_ENGINES[engineKey];
+    let engineUrl;
+    
+    if (!engine) {
+      console.error('[Background] 无效的引擎配置:', engineKey, '使用默认引擎: qwen');
+      engineUrl = SEARCH_ENGINES['qwen'].url;
+    } else {
+      engineUrl = engine.url;
+    }
     
     // 5. 根据用户设置决定是在当前标签页打开还是新建标签页
     let targetTabId;
@@ -151,12 +161,103 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // 返回 true 表示异步响应
     return true;
   }
+  
+  if (request.action === 'updatePageHistory') {
+    // 更新历史记录的停留时长
+    (async () => {
+      try {
+        await updateHistoryDurationToDB(request.data.id, request.data.duration, request.data.lastUpdateTime);
+        sendResponse({ success: true });
+      } catch (error) {
+        console.error('[Background] 更新时长失败:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    
+    // 返回 true 表示异步响应
+    return true;
+  }
+  
+  if (request.action === 'openSummaryPage') {
+    // 打开总结页面（从历史记录页面调用）
+    (async () => {
+      try {
+        console.log('[Background] 收到打开总结页面请求');
+        
+        // 读取用户配置
+        const settings = await chrome.storage.sync.get({
+          favoriteEngine: 'qwen',
+          useCurrentTab: false
+        });
+        
+        // 确定引擎URL
+        const engineKey = request.engineKey || settings.favoriteEngine || 'qwen';
+        const engine = SEARCH_ENGINES[engineKey];
+        let engineUrl;
+        
+        if (!engine) {
+          console.error('[Background] 无效的引擎配置:', engineKey, '使用默认引擎: qwen');
+          engineUrl = SEARCH_ENGINES['qwen'].url;
+        } else {
+          engineUrl = engine.url;
+        }
+        
+        console.log('[Background] 将打开引擎:', engineKey, engineUrl);
+        
+        // 打开/更新标签页
+        let targetTabId;
+        if (settings.useCurrentTab) {
+          // 在当前标签页打开
+          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (tabs && tabs[0]) {
+            await chrome.tabs.update(tabs[0].id, { url: engineUrl });
+            targetTabId = tabs[0].id;
+          } else {
+            // 如果没有活动标签页，创建新标签页
+            const newTab = await chrome.tabs.create({ url: engineUrl });
+            targetTabId = newTab.id;
+          }
+        } else {
+          // 在新标签页打开
+          const newTab = await chrome.tabs.create({ url: engineUrl });
+          targetTabId = newTab.id;
+        }
+        
+        console.log('[Background] 目标标签页ID:', targetTabId);
+        
+        // 监听页面加载完成后注入content.js
+        chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo) {
+          if (tabId === targetTabId && changeInfo.status === 'complete') {
+            console.log('[Background] 页面加载完成，注入content.js');
+            chrome.tabs.onUpdated.removeListener(listener);
+            
+            chrome.scripting.executeScript({
+              target: { tabId: targetTabId },
+              files: ["content.js"]
+            }).then(() => {
+              console.log('[Background] content.js 注入成功');
+            }).catch((error) => {
+              console.error('[Background] content.js 注入失败:', error);
+            });
+          }
+        });
+        
+        sendResponse({ success: true });
+      } catch (error) {
+        console.error('[Background] 打开总结页面失败:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    
+    // 返回 true 表示异步响应
+    return true;
+  }
 });
 
 // IndexedDB 操作函数（在 background service worker 中）
 async function saveHistoryToDB(historyData) {
   const DB_NAME = 'PageHistoryDB';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;  // 升级到版本2
   const STORE_NAME = 'pageHistory';
   
   return new Promise((resolve, reject) => {
@@ -188,11 +289,105 @@ async function saveHistoryToDB(historyData) {
     
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
+      const oldVersion = event.oldVersion;
+      
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
         objectStore.createIndex('url', 'url', { unique: false });
         objectStore.createIndex('visitTime', 'visitTime', { unique: false });
         objectStore.createIndex('domain', 'domain', { unique: false });
+        objectStore.createIndex('duration', 'duration', { unique: false });
+        objectStore.createIndex('lastUpdateTime', 'lastUpdateTime', { unique: false });
+      } else if (oldVersion < 2) {
+        // 升级到版本2：添加时长字段索引
+        const transaction = event.target.transaction;
+        const objectStore = transaction.objectStore(STORE_NAME);
+        
+        if (!objectStore.indexNames.contains('duration')) {
+          objectStore.createIndex('duration', 'duration', { unique: false });
+        }
+        if (!objectStore.indexNames.contains('lastUpdateTime')) {
+          objectStore.createIndex('lastUpdateTime', 'lastUpdateTime', { unique: false });
+        }
+      }
+    };
+  });
+}
+
+// 更新历史记录时长
+async function updateHistoryDurationToDB(id, duration, lastUpdateTime) {
+  const DB_NAME = 'PageHistoryDB';
+  const DB_VERSION = 2;
+  const STORE_NAME = 'pageHistory';
+  
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    
+    request.onerror = () => {
+      console.error('数据库打开失败:', request.error);
+      reject(request.error);
+    };
+    
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const getRequest = objectStore.get(id);
+      
+      getRequest.onsuccess = () => {
+        const record = getRequest.result;
+        if (record) {
+          record.duration = duration;
+          record.lastUpdateTime = lastUpdateTime;
+          
+          const updateRequest = objectStore.put(record);
+          
+          updateRequest.onsuccess = () => {
+            console.log('[Background] 时长更新成功:', id, duration + '秒');
+            db.close();
+            resolve();
+          };
+          
+          updateRequest.onerror = () => {
+            console.error('[Background] 时长更新失败:', updateRequest.error);
+            db.close();
+            reject(updateRequest.error);
+          };
+        } else {
+          console.error('[Background] 记录不存在:', id);
+          db.close();
+          reject(new Error('Record not found'));
+        }
+      };
+      
+      getRequest.onerror = () => {
+        console.error('[Background] 获取记录失败:', getRequest.error);
+        db.close();
+        reject(getRequest.error);
+      };
+    };
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      const oldVersion = event.oldVersion;
+      
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        objectStore.createIndex('url', 'url', { unique: false });
+        objectStore.createIndex('visitTime', 'visitTime', { unique: false });
+        objectStore.createIndex('domain', 'domain', { unique: false });
+        objectStore.createIndex('duration', 'duration', { unique: false });
+        objectStore.createIndex('lastUpdateTime', 'lastUpdateTime', { unique: false });
+      } else if (oldVersion < 2) {
+        const transaction = event.target.transaction;
+        const objectStore = transaction.objectStore(STORE_NAME);
+        
+        if (!objectStore.indexNames.contains('duration')) {
+          objectStore.createIndex('duration', 'duration', { unique: false });
+        }
+        if (!objectStore.indexNames.contains('lastUpdateTime')) {
+          objectStore.createIndex('lastUpdateTime', 'lastUpdateTime', { unique: false });
+        }
       }
     };
   });

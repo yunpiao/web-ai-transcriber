@@ -19,44 +19,60 @@ describe('浏览记录总结功能单元测试', () => {
     return `${year}-${month}-${day}`;
   }
 
-  // 模拟总结文本生成函数
-  function generateSummaryText(todayRecords) {
-    let summaryText = `请帮我总结一下今天（${formatDate(Date.now())}）的浏览记录，共浏览了 ${todayRecords.length} 个网页。以下是详细的浏览记录：\n\n`;
+  function formatDuration(seconds) {
+    if (!seconds || seconds < 0) {
+      return '0秒';
+    }
     
-    const sortedRecords = [...todayRecords].sort((a, b) => a.visitTime - b.visitTime);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (hours > 0) {
+      if (minutes > 0) {
+        return `${hours}小时${minutes}分`;
+      }
+      return `${hours}小时`;
+    } else if (minutes > 0) {
+      if (secs > 0) {
+        return `${minutes}分${secs}秒`;
+      }
+      return `${minutes}分`;
+    } else {
+      return `${secs}秒`;
+    }
+  }
+
+  // 模拟总结文本生成函数（新版本：使用完整内容，支持筛选条件）
+  function generateSummaryText(records, filterDescription = '全部') {
+    let summaryText = `请帮我总结以下浏览记录（筛选条件：${filterDescription}），共 ${records.length} 个网页。以下是详细的浏览记录：\n\n`;
+    
+    const sortedRecords = [...records].sort((a, b) => a.visitTime - b.visitTime);
     
     sortedRecords.forEach((record, index) => {
-      summaryText += `${index + 1}. [${formatTime(record.visitTime)}] ${record.title}\n`;
+      summaryText += `${index + 1}. [${formatDate(record.visitTime)} ${formatTime(record.visitTime)}] ${record.title}\n`;
       summaryText += `   网址: ${record.url}\n`;
       summaryText += `   域名: ${record.domain}\n`;
+      
+      // 添加停留时长信息
+      if (record.duration) {
+        summaryText += `   停留时长: ${formatDuration(record.duration)}\n`;
+      }
+      
+      // 使用完整内容，不截断
       if (record.content && record.content.trim()) {
-        const contentPreview = record.content.length > 150 
-          ? record.content.substring(0, 150) + '...' 
-          : record.content;
-        summaryText += `   内容摘要: ${contentPreview}\n`;
+        summaryText += `   页面内容: ${record.content}\n`;
       }
       summaryText += '\n';
     });
     
-    summaryText += '\n请根据以上浏览记录，总结今天的浏览主题和关注重点，并给出以下内容：\n';
+    summaryText += '\n请根据以上浏览记录，总结浏览主题和关注重点，并给出以下内容：\n';
     summaryText += '1. 主要浏览的网站和类型\n';
     summaryText += '2. 关注的主要话题或领域\n';
     summaryText += '3. 浏览时间分布特点\n';
     summaryText += '4. 建议和洞察（如果有的话）';
     
     return summaryText;
-  }
-
-  // 筛选今天的记录
-  function filterTodayRecords(allRecords) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    return allRecords.filter(record => {
-      const recordDate = new Date(record.visitTime);
-      recordDate.setHours(0, 0, 0, 0);
-      return recordDate.getTime() === today.getTime();
-    });
   }
 
   test('应该能够格式化时间', () => {
@@ -71,24 +87,12 @@ describe('浏览记录总结功能单元测试', () => {
     expect(result).toBe('2024-01-15');
   });
 
-  test('应该能够筛选今天的记录', () => {
-    const today = new Date();
-    today.setHours(10, 0, 0, 0);
-    
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(10, 0, 0, 0);
-    
-    const allRecords = [
-      { id: 1, visitTime: today.getTime(), title: 'Today 1' },
-      { id: 2, visitTime: yesterday.getTime(), title: 'Yesterday' },
-      { id: 3, visitTime: today.getTime(), title: 'Today 2' }
-    ];
-    
-    const todayRecords = filterTodayRecords(allRecords);
-    expect(todayRecords).toHaveLength(2);
-    expect(todayRecords[0].title).toBe('Today 1');
-    expect(todayRecords[1].title).toBe('Today 2');
+  test('应该能够格式化停留时长', () => {
+    expect(formatDuration(30)).toBe('30秒');
+    expect(formatDuration(90)).toBe('1分30秒');
+    expect(formatDuration(3600)).toBe('1小时');
+    expect(formatDuration(3660)).toBe('1小时1分');
+    expect(formatDuration(7200)).toBe('2小时');
   });
 
   test('应该能够生成总结文本（单条记录）', () => {
@@ -100,16 +104,18 @@ describe('浏览记录总结功能单元测试', () => {
       title: '测试网页',
       url: 'https://example.com',
       domain: 'example.com',
-      content: '这是一段测试内容'
+      content: '这是一段测试内容',
+      duration: 120
     }];
     
     const summary = generateSummaryText(records);
     
-    expect(summary).toContain('共浏览了 1 个网页');
+    expect(summary).toContain('共 1 个网页');
     expect(summary).toContain('测试网页');
     expect(summary).toContain('https://example.com');
     expect(summary).toContain('example.com');
-    expect(summary).toContain('这是一段测试内容');
+    expect(summary).toContain('页面内容: 这是一段测试内容');
+    expect(summary).toContain('停留时长: 2分');
     expect(summary).toContain('主要浏览的网站和类型');
   });
 
@@ -123,27 +129,29 @@ describe('浏览记录总结功能单元测试', () => {
         title: '网页1',
         url: 'https://example1.com',
         domain: 'example1.com',
-        content: '内容1'
+        content: '内容1',
+        duration: 60
       },
       {
         visitTime: today.getTime() + 3600000, // +1小时
         title: '网页2',
         url: 'https://example2.com',
         domain: 'example2.com',
-        content: '内容2'
+        content: '内容2',
+        duration: 120
       }
     ];
     
     const summary = generateSummaryText(records);
     
-    expect(summary).toContain('共浏览了 2 个网页');
+    expect(summary).toContain('共 2 个网页');
     expect(summary).toContain('网页1');
     expect(summary).toContain('网页2');
-    expect(summary).toContain('1. [14:00] 网页1');
-    expect(summary).toContain('2. [15:00] 网页2');
+    expect(summary).toContain('14:00] 网页1');
+    expect(summary).toContain('15:00] 网页2');
   });
 
-  test('应该能够处理长内容（自动截断）', () => {
+  test('应该能够处理长内容（不截断）', () => {
     const today = new Date();
     const longContent = 'a'.repeat(200);
     
@@ -157,8 +165,8 @@ describe('浏览记录总结功能单元测试', () => {
     
     const summary = generateSummaryText(records);
     
-    expect(summary).toContain('内容摘要: ' + 'a'.repeat(150) + '...');
-    expect(summary).not.toContain('a'.repeat(200));
+    // 新版本不截断内容
+    expect(summary).toContain('页面内容: ' + 'a'.repeat(200));
   });
 
   test('应该能够处理无内容的记录', () => {
@@ -175,7 +183,7 @@ describe('浏览记录总结功能单元测试', () => {
     const summary = generateSummaryText(records);
     
     expect(summary).toContain('无内容网页');
-    expect(summary).not.toContain('内容摘要');
+    expect(summary).not.toContain('页面内容');
   });
 
   test('应该能够按时间顺序排序记录', () => {
@@ -217,7 +225,21 @@ describe('浏览记录总结功能单元测试', () => {
     const records = [];
     const summary = generateSummaryText(records);
     
-    expect(summary).toContain('共浏览了 0 个网页');
+    expect(summary).toContain('共 0 个网页');
+  });
+
+  test('应该能够生成带筛选条件的总结', () => {
+    const today = new Date();
+    const records = [{
+      visitTime: today.getTime(),
+      title: '测试网页',
+      url: 'https://example.com',
+      domain: 'example.com'
+    }];
+    
+    const summary = generateSummaryText(records, '今天');
+    
+    expect(summary).toContain('筛选条件：今天');
   });
 
   test('应该包含总结指引', () => {

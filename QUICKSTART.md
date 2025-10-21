@@ -123,9 +123,9 @@ open coverage/lcov-report/index.html
 ## 📚 相关文档
 
 - **功能使用**：查看 `smart-search-extension/FEATURE_USAGE.md`
-- **测试详情**：查看 `README_TESTING.md`
-- **实施总结**：查看 `IMPLEMENTATION_SUMMARY.md`
-- **手动测试**：查看 `smart-search-extension/TESTING_GUIDE.md`
+- **测试完整指南**：查看 `docs/TESTING.md`
+- **版本更新日志**：查看 `RELEASE_NOTES.md`
+- **GitHub发布指南**：查看 `GITHUB_RELEASE_GUIDE.md`
 
 ---
 
