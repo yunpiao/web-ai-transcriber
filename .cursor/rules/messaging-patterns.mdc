@@ -1,0 +1,454 @@
+---
+description: Chrome扩展消息通信模式和最佳实践
+globs: background.js,content.js,tracker.js,options.js,history.js
+---
+
+# Chrome扩展消息通信模式
+
+## 消息通信架构
+
+在 Chrome 扩展中，不同组件之间的通信需要遵循特定的模式：
+
+```
+Content Script  ←→  Background Service Worker
+       ↓                      ↓
+    网页环境              扩展后台环境
+```
+
+## 标准消息格式
+
+### 请求消息结构
+
+所有消息必须包含 `action` 字段来标识操作类型：
+
+```javascript
+{
+  action: 'operationName',    // 必需：操作标识符
+  data: {                      // 可选：操作数据
+    // ... 具体数据
+  }
+}
+```
+
+### 响应消息结构
+
+所有响应必须包含 `success` 字段来标识操作是否成功：
+
+```javascript
+{
+  success: true,               // 必需：操作是否成功
+  data: {                      // 可选：返回数据
+    // ... 响应数据
+  },
+  error: 'error message'       // 可选：错误信息（仅当 success: false）
+}
+```
+
+## Content Script → Background
+
+### 发送消息（Content Script）
+
+```javascript
+// 推荐：使用 async/await
+async function sendToBackground() {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: 'saveRecord',
+      data: {
+        url: window.location.href,
+        title: document.title
+      }
+    });
+    
+    if (response.success) {
+      console.log('[Content] 保存成功:', response.data);
+    } else {
+      console.error('[Content] 保存失败:', response.error);
+    }
+  } catch (error) {
+    console.error('[Content] 发送消息失败:', error);
+  }
+}
+
+// 传统回调方式（不推荐，但某些场景需要）
+chrome.runtime.sendMessage({
+  action: 'saveRecord',
+  data: { /* ... */ }
+}, (response) => {
+  if (chrome.runtime.lastError) {
+    console.error('[Content] 通信错误:', chrome.runtime.lastError);
+    return;
+  }
+  
+  if (response.success) {
+    // 处理成功
+  }
+});
+```
+
+### 接收消息（Background）
+
+参考 [smart-search-extension/background.js](mdc:smart-search-extension/background.js)：
+
+```javascript
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // 方式1：同步响应（简单操作）
+  if (request.action === 'getConfig') {
+    const config = { /* ... */ };
+    sendResponse({ success: true, data: config });
+    return; // 同步响应不需要返回 true
+  }
+  
+  // 方式2：异步响应（数据库操作、API调用等）
+  if (request.action === 'saveRecord') {
+    (async () => {
+      try {
+        const result = await saveToDatabase(request.data);
+        sendResponse({ success: true, data: result });
+      } catch (error) {
+        console.error('[Background] 保存失败:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    return true; // ⚠️ 异步响应必须返回 true！
+  }
+  
+  // 方式3：不响应（某些通知类消息）
+  if (request.action === 'notify') {
+    console.log('[Background] 收到通知:', request.data);
+    // 不调用 sendResponse
+  }
+});
+```
+
+## Background → Content Script
+
+### 发送消息到特定标签页
+
+```javascript
+// 发送到指定标签页
+async function sendToTab(tabId, message) {
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, message);
+    if (response.success) {
+      console.log('[Background] 标签页响应:', response);
+    }
+  } catch (error) {
+    console.error('[Background] 发送到标签页失败:', error);
+  }
+}
+
+// 发送到当前活动标签页
+async function sendToActiveTab(message) {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab) {
+    await sendToTab(tab.id, message);
+  }
+}
+```
+
+### 接收消息（Content Script）
+
+```javascript
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'updateUI') {
+    // 更新页面UI
+    updatePageElements(request.data);
+    sendResponse({ success: true });
+    return true;
+  }
+});
+```
+
+## 扩展页面之间的通信
+
+### Options → Background → History
+
+options 页面和 history 页面可以直接使用 `chrome.runtime.sendMessage`：
+
+```javascript
+// options.js 保存配置后通知
+async function notifyConfigChange() {
+  await chrome.runtime.sendMessage({
+    action: 'configUpdated',
+    data: { /* 新配置 */ }
+  });
+}
+```
+
+## 消息通信最佳实践
+
+### 1. 始终使用统一的消息格式
+
+✅ **正确**：
+```javascript
+chrome.runtime.sendMessage({
+  action: 'saveRecord',
+  data: { url, title }
+});
+```
+
+❌ **错误**：
+```javascript
+// 不要使用多种格式
+chrome.runtime.sendMessage({ type: 'save', url, title });
+chrome.runtime.sendMessage('saveRecord');
+```
+
+### 2. 异步操作必须返回 true
+
+✅ **正确**：
+```javascript
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'asyncOperation') {
+    (async () => {
+      const result = await doSomethingAsync();
+      sendResponse({ success: true, data: result });
+    })();
+    return true; // 关键！
+  }
+});
+```
+
+❌ **错误**：
+```javascript
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+  // 不要直接使用 async，sendResponse 会失效
+  const result = await doSomethingAsync();
+  sendResponse({ success: true, data: result }); // 这不会工作！
+});
+```
+
+### 3. 正确处理错误
+
+✅ **正确**：
+```javascript
+try {
+  const response = await chrome.runtime.sendMessage({ action: 'test' });
+  if (response.success) {
+    // 处理成功
+  } else {
+    console.error('操作失败:', response.error);
+  }
+} catch (error) {
+  console.error('通信失败:', error);
+  // 可能是扩展被重新加载或卸载
+}
+```
+
+### 4. 检查 runtime.lastError
+
+在回调方式中，必须检查 `chrome.runtime.lastError`：
+
+```javascript
+chrome.runtime.sendMessage({ action: 'test' }, (response) => {
+  if (chrome.runtime.lastError) {
+    console.error('通信错误:', chrome.runtime.lastError);
+    return;
+  }
+  
+  // 处理响应
+});
+```
+
+### 5. 为每个 action 添加日志
+
+```javascript
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('[Background] 收到消息:', request.action, request.data);
+  
+  if (request.action === 'saveRecord') {
+    // 处理逻辑
+    console.log('[Background] 保存完成');
+    sendResponse({ success: true });
+  }
+});
+```
+
+## 常见消息类型
+
+### 数据操作类
+
+```javascript
+// 保存数据
+{ action: 'saveRecord', data: { /* ... */ } }
+
+// 查询数据
+{ action: 'queryRecords', data: { filters } }
+
+// 删除数据
+{ action: 'deleteRecord', data: { id } }
+```
+
+### 配置管理类
+
+```javascript
+// 获取配置
+{ action: 'getConfig' }
+
+// 更新配置
+{ action: 'updateConfig', data: { key, value } }
+
+// 配置变更通知
+{ action: 'configChanged', data: { changes } }
+```
+
+### UI操作类
+
+```javascript
+// 更新UI
+{ action: 'updateUI', data: { element, value } }
+
+// 显示通知
+{ action: 'showNotification', data: { message } }
+```
+
+## 调试技巧
+
+### 1. 添加详细日志
+
+```javascript
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('[Background] 收到消息:', {
+    action: request.action,
+    data: request.data,
+    sender: sender.tab ? `Tab ${sender.tab.id}` : 'Extension'
+  });
+  
+  // ... 处理逻辑
+  
+  console.log('[Background] 发送响应:', response);
+  sendResponse(response);
+});
+```
+
+### 2. 检查消息是否送达
+
+在发送端：
+```javascript
+const response = await chrome.runtime.sendMessage({ action: 'test' });
+console.log('收到响应:', response);
+```
+
+在接收端：
+```javascript
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('消息已送达:', request);
+  sendResponse({ success: true });
+  return true;
+});
+```
+
+### 3. 处理扩展重新加载
+
+```javascript
+try {
+  const response = await chrome.runtime.sendMessage({ action: 'test' });
+} catch (error) {
+  if (error.message.includes('Extension context invalidated')) {
+    console.warn('扩展已重新加载，请刷新页面');
+    // 可以提示用户刷新
+  }
+}
+```
+
+## 性能优化
+
+### 1. 避免频繁消息
+
+❌ **错误**：
+```javascript
+// 不要在循环中发送消息
+for (let i = 0; i < 1000; i++) {
+  await chrome.runtime.sendMessage({ action: 'save', data: items[i] });
+}
+```
+
+✅ **正确**：
+```javascript
+// 批量发送
+await chrome.runtime.sendMessage({ 
+  action: 'saveBatch', 
+  data: { items } 
+});
+```
+
+### 2. 使用防抖和节流
+
+```javascript
+// 防抖：延迟发送
+let debounceTimer;
+function debouncedSend(data) {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    chrome.runtime.sendMessage({ action: 'update', data });
+  }, 300);
+}
+
+// 节流：限制频率
+let lastSendTime = 0;
+function throttledSend(data) {
+  const now = Date.now();
+  if (now - lastSendTime > 1000) {
+    chrome.runtime.sendMessage({ action: 'update', data });
+    lastSendTime = now;
+  }
+}
+```
+
+## 常见问题
+
+### 问题：sendResponse 不工作
+
+**原因**：忘记返回 `true`
+
+**解决**：
+```javascript
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  (async () => {
+    // 异步操作
+    sendResponse({ success: true });
+  })();
+  return true; // 必须！
+});
+```
+
+### 问题：消息发送后没有响应
+
+**检查**：
+1. 接收端是否注册了监听器
+2. 接收端是否调用了 sendResponse
+3. 检查 console 是否有错误
+
+### 问题：扩展页面之间通信失败
+
+**原因**：扩展页面（options、history）不是 content script
+
+**解决**：直接使用 `chrome.runtime.sendMessage`，不需要特殊处理
+
+## 参考文件
+
+- [background.js](mdc:smart-search-extension/background.js) - 消息接收和处理
+- [tracker.js](mdc:smart-search-extension/tracker.js) - Content Script 消息发送
+- [options.js](mdc:smart-search-extension/options.js) - 扩展页面通信
+
+## 测试消息通信
+
+参考 [tests/integration/messaging.test.js](mdc:tests/integration/messaging.test.js)：
+
+```javascript
+test('应该能够发送和接收消息', async () => {
+  // 注册监听器
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'test') {
+      sendResponse({ success: true, data: 'received' });
+    }
+  });
+  
+  // 发送消息
+  const response = await chrome.runtime.sendMessage({ action: 'test' });
+  
+  expect(response.success).toBe(true);
+  expect(response.data).toBe('received');
+});
+```

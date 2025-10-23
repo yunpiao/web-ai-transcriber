@@ -1,0 +1,731 @@
+---
+description: Chrome扩展性能优化指南
+alwaysApply: false
+---
+
+# Chrome 扩展性能优化
+
+## 核心原则
+
+1. **减少内存占用** - 及时释放资源
+2. **优化执行速度** - 减少不必要的计算
+3. **降低功耗** - 减少定时器和事件监听
+4. **异步优先** - 避免阻塞主线程
+
+## Background Script 优化
+
+### 1. Service Worker 生命周期管理
+
+```javascript
+// ✅ 正确：需要时才初始化
+let db;
+async function getDB() {
+  if (!db) {
+    db = await initDB();
+  }
+  return db;
+}
+
+// ❌ 错误：启动时就初始化
+const db = await initDB(); // Service Worker 可能随时被卸载
+```
+
+### 2. 减少常驻内存
+
+```javascript
+// ✅ 使用事件驱动，不要使用轮询
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete') {
+    handlePageLoad(tab);
+  }
+});
+
+// ❌ 不要使用定时器轮询
+setInterval(() => {
+  chrome.tabs.query({active: true}, (tabs) => {
+    // 检查标签页状态
+  });
+}, 1000); // 每秒都运行，浪费资源！
+```
+
+### 3. 缓存配置数据
+
+```javascript
+// ✅ 使用缓存减少 storage 访问
+let configCache;
+let cacheTime;
+const CACHE_DURATION = 5 * 60 * 1000; // 5分钟
+
+async function getConfig() {
+  const now = Date.now();
+  
+  if (configCache && cacheTime && (now - cacheTime < CACHE_DURATION)) {
+    return configCache;
+  }
+  
+  const config = await chrome.storage.sync.get(DEFAULT_CONFIG);
+  configCache = config;
+  cacheTime = now;
+  
+  return config;
+}
+
+// 监听配置变更，清除缓存
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync') {
+    configCache = null;
+    cacheTime = null;
+  }
+});
+```
+
+### 4. 批量操作
+
+```javascript
+// ✅ 批量处理
+async function processTabs(tabs) {
+  const results = await Promise.all(
+    tabs.map(tab => processTab(tab))
+  );
+  return results;
+}
+
+// ❌ 串行处理
+async function processTabs(tabs) {
+  const results = [];
+  for (const tab of tabs) {
+    results.push(await processTab(tab)); // 慢！
+  }
+  return results;
+}
+```
+
+## Content Script 优化
+
+### 1. 延迟加载
+
+```javascript
+// ✅ 只在需要时注入
+chrome.action.onClicked.addListener(async (tab) => {
+  await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    files: ['content.js']
+  });
+});
+
+// 相比在 manifest.json 中自动注入所有页面：
+// {
+//   "content_scripts": [{
+//     "matches": ["https://*/*"],
+//     "js": ["content.js"]
+//   }]
+// }
+```
+
+### 2. 防抖和节流
+
+```javascript
+// 防抖：延迟执行，多次触发只执行最后一次
+function debounce(fn, delay) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+// 节流：限制执行频率
+function throttle(fn, interval) {
+  let lastTime = 0;
+  return function (...args) {
+    const now = Date.now();
+    if (now - lastTime >= interval) {
+      lastTime = now;
+      fn.apply(this, args);
+    }
+  };
+}
+
+// 使用示例
+const handleScroll = throttle(() => {
+  console.log('Scrolling...');
+}, 200); // 最多每 200ms 执行一次
+
+window.addEventListener('scroll', handleScroll);
+
+const handleInput = debounce((e) => {
+  console.log('Input value:', e.target.value);
+}, 300); // 停止输入 300ms 后执行
+
+input.addEventListener('input', handleInput);
+```
+
+### 3. 事件委托
+
+```javascript
+// ✅ 使用事件委托（一个监听器）
+document.addEventListener('click', (e) => {
+  if (e.target.matches('.delete-btn')) {
+    handleDelete(e.target.dataset.id);
+  }
+});
+
+// ❌ 为每个元素添加监听器
+document.querySelectorAll('.delete-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    handleDelete(btn.dataset.id);
+  });
+});
+```
+
+### 4. DOM 操作优化
+
+```javascript
+// ✅ 批量更新 DOM
+const fragment = document.createDocumentFragment();
+items.forEach(item => {
+  const div = document.createElement('div');
+  div.textContent = item.name;
+  fragment.appendChild(div);
+});
+container.appendChild(fragment); // 只触发一次重排
+
+// ❌ 多次操作 DOM
+items.forEach(item => {
+  const div = document.createElement('div');
+  div.textContent = item.name;
+  container.appendChild(div); // 每次都触发重排！
+});
+```
+
+### 5. 使用 IntersectionObserver
+
+```javascript
+// ✅ 使用 IntersectionObserver 监听元素可见性
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      loadContent(entry.target);
+      observer.unobserve(entry.target);
+    }
+  });
+});
+
+elements.forEach(el => observer.observe(el));
+
+// ❌ 使用 scroll 事件（性能差）
+window.addEventListener('scroll', () => {
+  elements.forEach(el => {
+    if (isInViewport(el)) {
+      loadContent(el);
+    }
+  });
+});
+```
+
+## IndexedDB 优化
+
+### 1. 使用索引
+
+参考 [smart-search-extension/db.js](mdc:smart-search-extension/db.js)
+
+```javascript
+// ✅ 为常用查询字段创建索引
+request.onupgradeneeded = (event) => {
+  const db = event.target.result;
+  const objectStore = db.createObjectStore('records', { keyPath: 'id' });
+  
+  // 创建索引
+  objectStore.createIndex('date', 'date', { unique: false });
+  objectStore.createIndex('url', 'url', { unique: false });
+  objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+};
+
+// 查询时使用索引
+const index = objectStore.index('date');
+const records = await index.getAll('2024-10-23');
+```
+
+### 2. 限制查询结果
+
+```javascript
+// ✅ 使用游标限制结果数量
+async function getRecentRecords(limit = 100) {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(['records'], 'readonly');
+    const objectStore = transaction.objectStore('records');
+    const index = objectStore.index('timestamp');
+    const request = index.openCursor(null, 'prev'); // 倒序
+    
+    const results = [];
+    request.onsuccess = (event) => {
+      const cursor = event.target.result;
+      
+      if (cursor && results.length < limit) {
+        results.push(cursor.value);
+        cursor.continue();
+      } else {
+        db.close();
+        resolve(results);
+      }
+    };
+  });
+}
+
+// ❌ 获取所有记录再截取
+const allRecords = await getAllRecords(); // 可能有数万条！
+const recent = allRecords.slice(0, 100);
+```
+
+### 3. 批量操作使用事务
+
+```javascript
+// ✅ 使用事务批量操作
+async function addMultipleRecords(records) {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(['records'], 'readwrite');
+    const objectStore = transaction.objectStore('records');
+    
+    records.forEach(record => {
+      objectStore.add(record);
+    });
+    
+    transaction.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error);
+    };
+  });
+}
+
+// ❌ 逐个操作
+for (const record of records) {
+  await addRecord(record); // 每次都打开关闭数据库！
+}
+```
+
+### 4. 及时关闭连接
+
+```javascript
+// ✅ 操作完成后立即关闭
+async function getRecord(id) {
+  const db = await initDB();
+  try {
+    // ... 操作
+    return result;
+  } finally {
+    db.close(); // 确保关闭
+  }
+}
+
+// ❌ 不关闭连接
+async function getRecord(id) {
+  const db = await initDB();
+  // ... 操作
+  return result;
+  // 没有关闭！
+}
+```
+
+## 内存管理
+
+### 1. 避免内存泄漏
+
+```javascript
+// ✅ 清理事件监听器
+class MyComponent {
+  constructor() {
+    this.handleClick = this.handleClick.bind(this);
+  }
+  
+  mount() {
+    document.addEventListener('click', this.handleClick);
+  }
+  
+  unmount() {
+    document.removeEventListener('click', this.handleClick);
+  }
+  
+  handleClick() {
+    // ...
+  }
+}
+
+// ❌ 不清理监听器
+class MyComponent {
+  mount() {
+    document.addEventListener('click', () => {
+      // 这个函数会一直存在，无法被垃圾回收！
+    });
+  }
+}
+```
+
+### 2. 清理定时器
+
+```javascript
+// ✅ 清理定时器
+class Timer {
+  start() {
+    this.timerId = setInterval(() => {
+      this.tick();
+    }, 1000);
+  }
+  
+  stop() {
+    if (this.timerId) {
+      clearInterval(this.timerId);
+      this.timerId = null;
+    }
+  }
+  
+  tick() {
+    // ...
+  }
+}
+
+// ❌ 不清理定时器
+class Timer {
+  start() {
+    setInterval(() => {
+      this.tick();
+    }, 1000);
+    // 定时器会一直运行！
+  }
+}
+```
+
+### 3. 限制缓存大小
+
+```javascript
+// ✅ 使用 LRU 缓存
+class LRUCache {
+  constructor(maxSize = 100) {
+    this.maxSize = maxSize;
+    this.cache = new Map();
+  }
+  
+  get(key) {
+    if (!this.cache.has(key)) return null;
+    
+    const value = this.cache.get(key);
+    // 移到最后（最近使用）
+    this.cache.delete(key);
+    this.cache.set(key, value);
+    
+    return value;
+  }
+  
+  set(key, value) {
+    // 如果已存在，先删除
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+    
+    // 如果超过大小限制，删除最旧的
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+    
+    this.cache.set(key, value);
+  }
+  
+  clear() {
+    this.cache.clear();
+  }
+}
+
+// 使用
+const cache = new LRUCache(50); // 最多缓存 50 项
+```
+
+## 网络请求优化
+
+### 1. 请求合并
+
+```javascript
+// ✅ 合并请求
+class RequestBatcher {
+  constructor(batchFn, delay = 50) {
+    this.batchFn = batchFn;
+    this.delay = delay;
+    this.queue = [];
+    this.timer = null;
+  }
+  
+  request(data) {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ data, resolve, reject });
+      
+      if (!this.timer) {
+        this.timer = setTimeout(() => {
+          this.flush();
+        }, this.delay);
+      }
+    });
+  }
+  
+  async flush() {
+    if (this.queue.length === 0) return;
+    
+    const batch = this.queue.splice(0);
+    this.timer = null;
+    
+    try {
+      const results = await this.batchFn(batch.map(item => item.data));
+      batch.forEach((item, index) => {
+        item.resolve(results[index]);
+      });
+    } catch (error) {
+      batch.forEach(item => {
+        item.reject(error);
+      });
+    }
+  }
+}
+
+// 使用
+const batcher = new RequestBatcher(async (items) => {
+  // 一次请求处理多个项目
+  return await fetch('/api/batch', {
+    method: 'POST',
+    body: JSON.stringify({ items })
+  }).then(r => r.json());
+});
+
+// 多个请求会被合并
+const result1 = await batcher.request(data1);
+const result2 = await batcher.request(data2);
+```
+
+### 2. 请求去重
+
+```javascript
+// ✅ 避免重复请求
+class RequestDeduplicator {
+  constructor() {
+    this.pending = new Map();
+  }
+  
+  async request(key, requestFn) {
+    // 如果正在请求中，返回相同的 Promise
+    if (this.pending.has(key)) {
+      return this.pending.get(key);
+    }
+    
+    const promise = requestFn()
+      .finally(() => {
+        this.pending.delete(key);
+      });
+    
+    this.pending.set(key, promise);
+    return promise;
+  }
+}
+
+// 使用
+const deduplicator = new RequestDeduplicator();
+
+// 多次调用只会发起一次请求
+const data1 = await deduplicator.request('user:123', () => fetchUser(123));
+const data2 = await deduplicator.request('user:123', () => fetchUser(123)); // 复用第一次的请求
+```
+
+## 性能监控
+
+### 1. 性能测量
+
+```javascript
+// 测量执行时间
+function measureTime(name, fn) {
+  const start = performance.now();
+  const result = fn();
+  const duration = performance.now() - start;
+  
+  console.log(`[Performance] ${name}: ${duration.toFixed(2)}ms`);
+  return result;
+}
+
+// 异步版本
+async function measureTimeAsync(name, fn) {
+  const start = performance.now();
+  const result = await fn();
+  const duration = performance.now() - start;
+  
+  console.log(`[Performance] ${name}: ${duration.toFixed(2)}ms`);
+  return result;
+}
+
+// 使用
+const data = await measureTimeAsync('Load Records', async () => {
+  return await getAllRecords();
+});
+```
+
+### 2. 内存监控
+
+```javascript
+// 监控内存使用
+function logMemoryUsage() {
+  if (performance.memory) {
+    const used = performance.memory.usedJSHeapSize / 1048576; // MB
+    const total = performance.memory.totalJSHeapSize / 1048576;
+    const limit = performance.memory.jsHeapSizeLimit / 1048576;
+    
+    console.log(`[Memory] Used: ${used.toFixed(2)}MB / Total: ${total.toFixed(2)}MB / Limit: ${limit.toFixed(2)}MB`);
+  }
+}
+
+// 定期检查（仅开发环境）
+if (DEBUG) {
+  setInterval(logMemoryUsage, 10000); // 每 10 秒
+}
+```
+
+### 3. 性能标记
+
+```javascript
+// 使用 Performance API
+function startMeasure(name) {
+  performance.mark(`${name}-start`);
+}
+
+function endMeasure(name) {
+  performance.mark(`${name}-end`);
+  performance.measure(name, `${name}-start`, `${name}-end`);
+  
+  const measure = performance.getEntriesByName(name)[0];
+  console.log(`[Performance] ${name}: ${measure.duration.toFixed(2)}ms`);
+  
+  // 清理
+  performance.clearMarks(`${name}-start`);
+  performance.clearMarks(`${name}-end`);
+  performance.clearMeasures(name);
+}
+
+// 使用
+startMeasure('render');
+renderUI();
+endMeasure('render');
+```
+
+## 最佳实践检查清单
+
+### Background Script
+
+- [ ] 不使用轮询，使用事件驱动
+- [ ] 缓存常用数据
+- [ ] 批量处理操作
+- [ ] 及时释放资源
+
+### Content Script
+
+- [ ] 使用防抖/节流处理频繁事件
+- [ ] 使用事件委托减少监听器
+- [ ] 批量操作 DOM
+- [ ] 使用 IntersectionObserver 替代 scroll 事件
+
+### IndexedDB
+
+- [ ] 为常用查询创建索引
+- [ ] 使用事务批量操作
+- [ ] 限制查询结果数量
+- [ ] 操作完成后关闭连接
+
+### 内存管理
+
+- [ ] 清理事件监听器
+- [ ] 清理定时器
+- [ ] 限制缓存大小
+- [ ] 避免全局变量
+
+### 网络请求
+
+- [ ] 合并请求
+- [ ] 去重请求
+- [ ] 使用缓存
+- [ ] 设置超时
+
+## 性能测试
+
+### 负载测试
+
+```javascript
+// 测试大量数据的性能
+describe('性能测试', () => {
+  test('应该能够快速渲染 1000 条记录', async () => {
+    const items = Array.from({ length: 1000 }, (_, i) => ({
+      id: i,
+      title: `Item ${i}`,
+      url: `https://example.com/${i}`
+    }));
+    
+    const start = performance.now();
+    renderList(items);
+    const duration = performance.now() - start;
+    
+    expect(duration).toBeLessThan(100); // 应该在 100ms 内完成
+  });
+  
+  test('数据库查询应该快速', async () => {
+    // 插入大量数据
+    const records = Array.from({ length: 10000 }, (_, i) => ({
+      url: `https://example.com/${i}`,
+      title: `Page ${i}`,
+      date: '2024-10-23'
+    }));
+    
+    await addMultipleRecords(records);
+    
+    // 测试查询性能
+    const start = performance.now();
+    const results = await getRecordsByDate('2024-10-23');
+    const duration = performance.now() - start;
+    
+    expect(duration).toBeLessThan(50); // 应该在 50ms 内完成
+    expect(results.length).toBe(10000);
+  });
+});
+```
+
+## 常见性能问题
+
+### 问题 1：扩展变慢
+
+**检查**：
+1. Chrome 任务管理器（Shift+Esc）查看内存和 CPU 使用
+2. 检查是否有未清理的定时器
+3. 检查数据库大小
+4. 检查缓存大小
+
+### 问题 2：页面卡顿
+
+**原因**：Content Script 阻塞主线程
+
+**解决**：
+1. 使用 `requestIdleCallback` 在空闲时执行
+2. 分批处理大量数据
+3. 使用 Web Worker 处理计算密集任务
+
+### 问题 3：内存泄漏
+
+**检查**：
+1. Chrome DevTools → Memory → Take Heap Snapshot
+2. 比较多次快照，查看持续增长的对象
+3. 检查事件监听器是否清理
+4. 检查定时器是否清理
+
+## 参考资料
+
+- [Chrome Extension Performance Best Practices](https://developer.chrome.com/docs/extensions/mv3/performance/)
+- [Web Performance](https://web.dev/performance/)
+- [JavaScript Performance](https://developer.mozilla.org/en-US/docs/Web/Performance)

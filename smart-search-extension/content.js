@@ -1,169 +1,424 @@
-// 【架构升级】为每个引擎定义输入框和提交按钮的选择器
+// ==================== 常量定义 ====================
 const ENGINE_CONFIG = {
   'gemini.google.com': {
-    // Gemini 的输入框和按钮选择器
     input: 'div.ql-editor.textarea, rich-textarea .ql-editor',
     submit: 'button.send-button, div.send-button-container button',
   },
   'chat.qwen.ai': {
-    // Qwen 的选择器同样针对其UI组件
     input: '#chat-input',
     submit: '#send-message-button',
-    deepThinkingButton: 'button.ThinkingButton,button.chat-input-feature-btn' //
+    deepThinkingButton: 'button.ThinkingButton,button.chat-input-feature-btn'
   },
   'chat.deepseek.com': {
-    // DeepSeek 的选择器，基于用户提供的实际界面
     input: 'textarea#chat-input',
     submit: 'button#send-message-button',
   },
   'aistudio.google.com': {
-    // Google AI Studio 的输入框和按钮选择器
     input: 'textarea.textarea, textarea[aria-label*="Type something"]',
     submit: 'button[aria-label="Run"], button.run-button',
   }
 };
 
-// 自执行异步函数
-(async () => {
-  // 从storage获取临时搜索文本和相关标识
-  const data = await chrome.storage.local.get(['tempSearchText', 'skipPromptTemplate']);
-  let searchText = data.tempSearchText;
-  if (!searchText) return;
-  
-  const skipPromptTemplate = data.skipPromptTemplate || false;
+const TIMING = {
+  ELEMENT_CHECK_INTERVAL: 500,  // 元素检查间隔（毫秒）
+  MAX_ATTEMPTS: 20,              // 最大重试次数
+  DEEP_THINKING_DELAY: 1000,     // 深度思考按钮延迟
+  DEEP_THINKING_RESPONSE: 300,   // 深度思考响应延迟
+  SUBMIT_DELAY: 200,             // 提交延迟
+  BLUR_DELAY: 1000,              // 失焦延迟
+  MARKDOWN_CHECK_INTERVAL: 1000  // Markdown 检查间隔
+};
 
-  // 从storage获取用户自定义提示词（如果不跳过的话）
-  let promptTemplate = '';
-  if (!skipPromptTemplate) {
-    const promptData = await chrome.storage.sync.get('promptTemplate');
-    promptTemplate = promptData.promptTemplate || `你将扮演一个'录音文字稿'优化器，将用户发送的视频文字稿优化为一篇结构清晰、内容准确且易于阅读的文章。你必须严格遵循以下规则来优化文稿：
-目的和目标：
-* 接收用户提供的视频文字稿。
-* 优化文稿，使其具备更好的可读性和结构。
-* 保留文稿中的所有核心信息，确保信息的完整性。
-* 最终产出一篇适合保存和后续阅读的文章。
-行为和规则：
-1. 内容优化：
-    a) 为文字稿添加适当的二级标题，以帮助组织内容并提升阅读体验。
-    b) 将文字稿中的重要内容进行加粗处理，突出重点信息。
-    c) 将文字稿合理分段落，避免大段文字堆砌，使结构更清晰。
-    d) 仔细校对并修改文字稿中的错别字、语法错误和标点符号问题。
-    e) 识别并彻底删除文字稿中所有的广告部分（包括但不限于推销信息、产品宣传等）。
-    f) 优化口语化表述，将其转换为书面化语言，去除冗余的语气词（例如：'嗯'、'啊'、'呃'、'那个'等），使文稿更流畅、专业。
-2. 格式和结构：
-    a) 尽可能避免使用多层级的无序列表。如果必须使用列表，请尽量使用单层级列表，或考虑将其转换为段落文字。
-    b) 优化后的文字稿应以文章形式呈现，而不是简单的文字堆砌。
-3. 信息保留：
-    a) 你的首要任务是保留文字稿的所有原始信息。在优化过程中，不得删除任何非广告性的内容，确保信息的完整性。
-    b) 任何修改都应以提升可读性为目标，而不是改变原意。
-整体语气：
-* 保持专业、严谨和细致。
-* 提供清晰、准确的优化结果。
-* 专注于文字稿的优化工作，不进行额外的评论或问答。 文字稿为：`;
+// ==================== 配置管理 ====================
+/**
+ * 配置加载器
+ * 职责：从 storage 加载所有必要的配置
+ */
+class ConfigLoader {
+  /**
+   * 加载临时搜索文本
+   */
+  static async loadSearchText() {
+    const data = await chrome.storage.local.get(['tempSearchText', 'skipPromptTemplate']);
+    return {
+      searchText: data.tempSearchText,
+      skipPromptTemplate: data.skipPromptTemplate || false
+    };
   }
 
-  // 从storage获取深度搜索设置
-  const deepThinkingData = await chrome.storage.sync.get('enabledeepThinking');
-  const enabledeepThinking = deepThinkingData.enabledeepThinking || false;
-
-  const hostname = window.location.hostname;
-  const config = ENGINE_CONFIG[hostname];
-
-  if (!config) {
-    console.error(`[智能搜索扩展] 未找到适用于 ${hostname} 的配置`);
-    return;
+  /**
+   * 加载提示词模板
+   */
+  static async loadPromptTemplate() {
+    const data = await chrome.storage.sync.get('promptTemplate');
+    return data.promptTemplate || '';
   }
-  
-  // 使用延时和重试来等待动态加载的元素
-  let attempts = 0;
-  const maxAttempts = 20; // 10秒超时
-  const interval = setInterval(async () => {
-    const inputBox = document.querySelector(config.input);
-    attempts++;
-    console.log(`[调试] 第${attempts}次尝试:`, {
-      inputFound: !!document.querySelector(config.input),
-      submitFound: !!document.querySelector(config.submit)
-    });
 
-    if (inputBox) {
-      clearInterval(interval);
-      console.log(`[智能搜索扩展] 已找到输入框。`);
+  /**
+   * 加载深度思考设置
+   */
+  static async loadDeepThinkingSetting() {
+    const data = await chrome.storage.sync.get('enabledeepThinking');
+    return data.enabledeepThinking || false;
+  }
 
-      // 如果启用了深度搜索，并且当前网站有深度搜索/思考按钮，则点击
-      if (enabledeepThinking && config.deepThinkingButton) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log("选择器", config.deepThinkingButton);
-        const deepThinkingButton = document.querySelector(config.deepThinkingButton);
-        if (deepThinkingButton) {
-          console.log('[智能搜索扩展] 正在启用深度搜索/思考功能...');
-          deepThinkingButton.click();
-          // 给一点时间让界面响应
-          await new Promise(resolve => setTimeout(resolve, 300));
-        } else {
-          console.log('[智能搜索扩展] 未找到深度搜索/思考按钮');
-        }
-      }
+  /**
+   * 加载所有配置
+   */
+  static async loadAll() {
+    const [textData, promptTemplate, enableDeepThinking] = await Promise.all([
+      this.loadSearchText(),
+      this.loadPromptTemplate(),
+      this.loadDeepThinkingSetting()
+    ]);
 
-      // 组装最终的搜索文本，将提示词模板与实际文本结合
-      searchText = `${promptTemplate}${searchText}`;
+    return {
+      searchText: textData.searchText,
+      skipPromptTemplate: textData.skipPromptTemplate,
+      promptTemplate: enableDeepThinking ? promptTemplate : '',
+      enableDeepThinking
+    };
+  }
 
-      // 1. 填入内容
-      searchText = searchText.replace(/</g, '\'<\'').replace(/>/g, '\'>\'');
-      if (inputBox.tagName === 'DIV') {
-        inputBox.innerHTML = searchText.replace(/\n/g, '<br>');
-      } else {
-        inputBox.value = searchText;
-      }
+  /**
+   * 清理临时数据
+   */
+  static async cleanup() {
+    await chrome.storage.local.remove(['tempSearchText', 'skipPromptTemplate']);
+    console.log('[智能搜索扩展] 临时数据已清除');
+  }
+}
 
-      // 2. 【关键】派发 'input' 事件，通知网页框架内容已更新
-      inputBox.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-      
-      // 3. 等待一个微小的延迟，让框架有时间反应
-      setTimeout(async () => {
-        // 4. 【最可靠】直接点击提交按钮
-        const submitButton = document.querySelector(config.submit);
-        if (submitButton) {
-          submitButton.click();
-        } else {
-          console.error(`[智能搜索扩展] 未找到提交按钮 ('${config.submit}')。`);
-        }
-        //  如果提交按钮未找到, 则在文本输入框上模拟按键
-        if (!submitButton) {
-          inputBox.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'Enter',
-            code: 'Enter',
-            bubbles: true,
-            cancelable: true
-          }));
-        }
-        // 等待1秒
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        inputBox.blur();
-
-        // 循环等待 markdown markdown-main-panel 出现
-        let markdownMainPanel = document.querySelector(".markdown-main-panel");
-        while (!markdownMainPanel) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          markdownMainPanel = document.querySelector(".markdown-main-panel");
-        }
-        if (markdownMainPanel) {
-          console.log('[智能搜索扩展] 已找到 markdown-main-panel 元素');
-          markdownMainPanel.focus();
-          markdownMainPanel.scrollIntoView({ behavior: 'smooth' });
-          markdownMainPanel.click();
-        } else {
-          console.error('[智能搜索扩展] 未找到 markdown 元素');
-        }
-
+// ==================== DOM 操作 ====================
+/**
+ * DOM 工具类
+ * 职责：处理所有 DOM 操作和元素查找
+ */
+class DOMHelper {
+  /**
+   * 等待元素出现
+   * @param {string} selector - CSS 选择器
+   * @param {number} maxAttempts - 最大尝试次数
+   * @param {number} interval - 检查间隔（毫秒）
+   */
+  static async waitForElement(selector, maxAttempts = TIMING.MAX_ATTEMPTS, interval = TIMING.ELEMENT_CHECK_INTERVAL) {
+    let attempts = 0;
+    
+    return new Promise((resolve, reject) => {
+      const checkInterval = setInterval(() => {
+        attempts++;
+        const element = document.querySelector(selector);
         
-        // 5. 清理工作
-        await chrome.storage.local.remove(['tempSearchText', 'skipPromptTemplate']);
-        console.log(`[智能搜索扩展] 任务完成，临时数据已清除。`);
-      }, 200); // 延迟增加到200ms以提高稳定性
+        console.log(`[调试] 第${attempts}次尝试查找元素: ${selector}`, { found: !!element });
+        
+        if (element) {
+          clearInterval(checkInterval);
+          resolve(element);
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          reject(new Error(`元素未找到: ${selector}`));
+        }
+      }, interval);
+    });
+  }
 
-    } else if (attempts >= maxAttempts) {
-      clearInterval(interval);
-      console.error(`[智能搜索扩展] 超时：未能找到输入框 ('${config.input}') 或提交按钮 ('${config.submit}')。`);
+  /**
+   * 填充输入框
+   * @param {HTMLElement} inputBox - 输入框元素
+   * @param {string} text - 要填充的文本
+   */
+  static fillInput(inputBox, text) {
+    // 转义 HTML 以防止 XSS
+    const escapedText = text.replace(/</g, '\'<\'').replace(/>/g, '\'>\'');
+    
+    if (inputBox.tagName === 'DIV') {
+      inputBox.innerHTML = escapedText.replace(/\n/g, '<br>');
+    } else {
+      inputBox.value = escapedText;
     }
-  }, 500);
+    
+    // 派发 input 事件，通知框架内容已更新
+    inputBox.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+  }
+
+  /**
+   * 点击提交按钮
+   * @param {string} selector - 按钮选择器
+   */
+  static clickSubmit(selector) {
+    const button = document.querySelector(selector);
+    if (button) {
+      button.click();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 模拟按键提交
+   * @param {HTMLElement} inputBox - 输入框元素
+   */
+  static simulateEnterKey(inputBox) {
+    inputBox.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter',
+      code: 'Enter',
+      bubbles: true,
+      cancelable: true
+    }));
+  }
+
+  /**
+   * 等待并聚焦 Markdown 面板
+   */
+  static async waitAndFocusMarkdown() {
+    let markdownPanel = document.querySelector('.markdown-main-panel');
+    
+    while (!markdownPanel) {
+      await this.delay(TIMING.MARKDOWN_CHECK_INTERVAL);
+      markdownPanel = document.querySelector('.markdown-main-panel');
+    }
+    
+    if (markdownPanel) {
+      console.log('[智能搜索扩展] 已找到 markdown-main-panel 元素');
+      markdownPanel.focus();
+      markdownPanel.scrollIntoView({ behavior: 'smooth' });
+      markdownPanel.click();
+    }
+  }
+
+  /**
+   * 延迟函数
+   */
+  static delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+
+// ==================== 引擎特定处理器 ====================
+/**
+ * 引擎处理器基类
+ * 职责：定义引擎处理器的接口
+ * 原则：开闭原则（OCP）- 通过继承扩展功能
+ */
+class EngineHandler {
+  constructor(config) {
+    this.config = config;
+  }
+
+  /**
+   * 处理深度思考功能（子类可覆盖）
+   */
+  async handleDeepThinking(enableDeepThinking) {
+    if (!enableDeepThinking || !this.config.deepThinkingButton) {
+      return;
+    }
+
+    await DOMHelper.delay(TIMING.DEEP_THINKING_DELAY);
+    console.log('[智能搜索扩展] 选择器:', this.config.deepThinkingButton);
+    
+    const button = document.querySelector(this.config.deepThinkingButton);
+    if (button) {
+      console.log('[智能搜索扩展] 正在启用深度搜索/思考功能...');
+      button.click();
+      await DOMHelper.delay(TIMING.DEEP_THINKING_RESPONSE);
+    } else {
+      console.log('[智能搜索扩展] 未找到深度搜索/思考按钮');
+    }
+  }
+
+  /**
+   * 处理提交后的操作（子类可覆盖）
+   */
+  async handlePostSubmit() {
+    // 默认实现：等待并聚焦 Markdown
+    await DOMHelper.waitAndFocusMarkdown();
+  }
+}
+
+/**
+ * AI Studio 引擎处理器
+ * 职责：处理 AI Studio 特有的逻辑
+ */
+class AIStudioHandler extends EngineHandler {
+  async handlePostSubmit() {
+    await super.handlePostSubmit();
+    await this.closeRunSettingsPanel();
+  }
+
+  /**
+   * 关闭 Run Settings 面板
+   */
+  async closeRunSettingsPanel() {
+    console.log('[智能搜索扩展] 检查是否需要关闭 Run Settings 面板...');
+    await DOMHelper.delay(500);
+    
+    const closeButton = document.querySelector('button[aria-label="Close run settings panel"]');
+    if (closeButton) {
+      console.log('[智能搜索扩展] 成功找到 "Close run settings panel" 按钮，正在关闭...');
+      closeButton.click();
+      console.log('[智能搜索扩展] Run Settings 面板已关闭');
+    } else {
+      console.log('[智能搜索扩展] 未找到 "Close run settings panel" 按钮');
+    }
+  }
+}
+
+/**
+ * 引擎处理器工厂
+ * 职责：根据主机名创建对应的处理器
+ */
+class EngineHandlerFactory {
+  static create(hostname, config) {
+    if (hostname === 'aistudio.google.com') {
+      return new AIStudioHandler(config);
+    }
+    return new EngineHandler(config);
+  }
+}
+
+// ==================== 主控制器 ====================
+/**
+ * 内容脚本控制器
+ * 职责：协调整个内容脚本的执行流程
+ * 原则：单一职责原则（SRP）- 只负责流程编排
+ */
+class ContentScriptController {
+  constructor() {
+    this.executed = false;
+  }
+
+  /**
+   * 检查是否已执行
+   */
+  checkExecutionStatus() {
+    if (window.__contentScriptExecuted) {
+      console.log('[智能搜索扩展] content.js 已执行过，跳过');
+      return false;
+    }
+    window.__contentScriptExecuted = true;
+    return true;
+  }
+
+  /**
+   * 加载配置并验证
+   */
+  async loadAndValidateConfig() {
+    const config = await ConfigLoader.loadAll();
+    
+    if (!config.searchText) {
+      console.log('[智能搜索扩展] 没有临时搜索文本，跳过执行');
+      return null;
+    }
+    
+    console.log('[智能搜索扩展] 开始处理搜索文本');
+    return config;
+  }
+
+  /**
+   * 获取引擎配置
+   */
+  getEngineConfig() {
+    const hostname = window.location.hostname;
+    const config = ENGINE_CONFIG[hostname];
+    
+    if (!config) {
+      console.error(`[智能搜索扩展] 未找到适用于 ${hostname} 的配置`);
+      return null;
+    }
+    
+    return { hostname, config };
+  }
+
+  /**
+   * 准备搜索文本
+   */
+  prepareSearchText(config) {
+    let { searchText, promptTemplate, skipPromptTemplate } = config;
+    
+    // 如果不跳过提示词，则添加提示词模板
+    if (!skipPromptTemplate && promptTemplate) {
+      searchText = `${promptTemplate}${searchText}`;
+    }
+    
+    return searchText;
+  }
+
+  /**
+   * 执行搜索流程
+   */
+  async executeSearch(engineConfig, searchText, config) {
+    const { hostname, config: engineCfg } = engineConfig;
+    const handler = EngineHandlerFactory.create(hostname, engineCfg);
+    
+    try {
+      // 1. 等待输入框出现
+      const inputBox = await DOMHelper.waitForElement(engineCfg.input);
+      console.log('[智能搜索扩展] 已找到输入框');
+      
+      // 2. 处理深度思考功能
+      await handler.handleDeepThinking(config.enableDeepThinking);
+      
+      // 3. 填充文本
+      DOMHelper.fillInput(inputBox, searchText);
+      
+      // 4. 延迟后提交
+      await DOMHelper.delay(TIMING.SUBMIT_DELAY);
+      
+      // 5. 尝试点击提交按钮
+      const submitted = DOMHelper.clickSubmit(engineCfg.submit);
+      if (!submitted) {
+        console.error(`[智能搜索扩展] 未找到提交按钮 ('${engineCfg.submit}')`);
+        // 尝试模拟按键
+        DOMHelper.simulateEnterKey(inputBox);
+      }
+      
+      // 6. 失焦输入框
+      await DOMHelper.delay(TIMING.BLUR_DELAY);
+      inputBox.blur();
+      
+      // 7. 处理提交后操作
+      await handler.handlePostSubmit();
+      
+      // 8. 清理临时数据
+      await ConfigLoader.cleanup();
+      console.log('[智能搜索扩展] 任务完成');
+      
+    } catch (error) {
+      console.error('[智能搜索扩展] 执行出错:', error);
+    }
+  }
+
+  /**
+   * 运行主流程
+   */
+  async run() {
+    // 1. 检查执行状态
+    if (!this.checkExecutionStatus()) {
+      return;
+    }
+    
+    // 2. 加载配置
+    const config = await this.loadAndValidateConfig();
+    if (!config) {
+      return;
+    }
+    
+    // 3. 获取引擎配置
+    const engineConfig = this.getEngineConfig();
+    if (!engineConfig) {
+      return;
+    }
+    
+    // 4. 准备搜索文本
+    const searchText = this.prepareSearchText(config);
+    
+    // 5. 执行搜索
+    await this.executeSearch(engineConfig, searchText, config);
+  }
+}
+
+// ==================== 主程序入口 ====================
+(async () => {
+  const controller = new ContentScriptController();
+  await controller.run();
 })();

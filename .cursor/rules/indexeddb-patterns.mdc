@@ -1,0 +1,723 @@
+---
+description: IndexedDB操作模式和最佳实践
+globs: db.js,**/db.*.js
+---
+
+# IndexedDB 操作模式
+
+## 核心原则
+
+参考 [smart-search-extension/db.js](mdc:smart-search-extension/db.js)：
+
+1. **所有操作必须包装为 Promise**
+2. **操作完成后必须关闭数据库连接**
+3. **正确处理错误和边界情况**
+4. **使用事务来保证数据一致性**
+
+## 标准操作模式
+
+### 数据库初始化
+
+```javascript
+const DB_NAME = 'YourDatabase';
+const DB_VERSION = 1;
+const STORE_NAME = 'yourStore';
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    
+    request.onerror = () => {
+      console.error('[DB] 打开数据库失败:', request.error);
+      reject(request.error);
+    };
+    
+    request.onsuccess = () => {
+      console.log('[DB] 数据库已打开');
+      resolve(request.result);
+    };
+    
+    request.onupgradeneeded = (event) => {
+      console.log('[DB] 数据库升级:', event.oldVersion, '→', event.newVersion);
+      const db = event.target.result;
+      
+      // 创建对象存储
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        const objectStore = db.createObjectStore(STORE_NAME, {
+          keyPath: 'id',
+          autoIncrement: true
+        });
+        
+        // 创建索引
+        objectStore.createIndex('url', 'url', { unique: false });
+        objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+        objectStore.createIndex('date', 'date', { unique: false });
+      }
+    };
+  });
+}
+```
+
+### 添加记录
+
+```javascript
+async function addRecord(data) {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      
+      // 添加时间戳
+      const record = {
+        ...data,
+        timestamp: Date.now(),
+        date: new Date().toISOString().split('T')[0]
+      };
+      
+      const request = objectStore.add(record);
+      
+      request.onsuccess = () => {
+        console.log('[DB] 记录已添加, ID:', request.result);
+        db.close();
+        resolve(request.result);
+      };
+      
+      request.onerror = () => {
+        console.error('[DB] 添加记录失败:', request.error);
+        db.close();
+        reject(request.error);
+      };
+    } catch (error) {
+      console.error('[DB] 添加记录异常:', error);
+      db.close();
+      reject(error);
+    }
+  });
+}
+```
+
+### 查询记录
+
+#### 查询所有记录
+
+```javascript
+async function getAllRecords() {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const request = objectStore.getAll();
+      
+      request.onsuccess = () => {
+        console.log('[DB] 查询到', request.result.length, '条记录');
+        db.close();
+        resolve(request.result);
+      };
+      
+      request.onerror = () => {
+        console.error('[DB] 查询失败:', request.error);
+        db.close();
+        reject(request.error);
+      };
+    } catch (error) {
+      console.error('[DB] 查询异常:', error);
+      db.close();
+      reject(error);
+    }
+  });
+}
+```
+
+#### 按 ID 查询
+
+```javascript
+async function getRecordById(id) {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const request = objectStore.get(id);
+      
+      request.onsuccess = () => {
+        if (request.result) {
+          console.log('[DB] 找到记录:', id);
+          db.close();
+          resolve(request.result);
+        } else {
+          console.log('[DB] 记录不存在:', id);
+          db.close();
+          resolve(null);
+        }
+      };
+      
+      request.onerror = () => {
+        console.error('[DB] 查询失败:', request.error);
+        db.close();
+        reject(request.error);
+      };
+    } catch (error) {
+      console.error('[DB] 查询异常:', error);
+      db.close();
+      reject(error);
+    }
+  });
+}
+```
+
+#### 使用索引查询
+
+```javascript
+async function getRecordsByDate(date) {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const index = objectStore.index('date');
+      const request = index.getAll(date);
+      
+      request.onsuccess = () => {
+        console.log('[DB] 查询到', request.result.length, '条记录');
+        db.close();
+        resolve(request.result);
+      };
+      
+      request.onerror = () => {
+        console.error('[DB] 查询失败:', request.error);
+        db.close();
+        reject(request.error);
+      };
+    } catch (error) {
+      console.error('[DB] 查询异常:', error);
+      db.close();
+      reject(error);
+    }
+  });
+}
+```
+
+#### 使用游标查询（复杂条件）
+
+```javascript
+async function getRecordsByCustomFilter(filterFn) {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const request = objectStore.openCursor();
+      const results = [];
+      
+      request.onsuccess = (event) => {
+        const cursor = event.target.result;
+        
+        if (cursor) {
+          if (filterFn(cursor.value)) {
+            results.push(cursor.value);
+          }
+          cursor.continue();
+        } else {
+          // 遍历完成
+          console.log('[DB] 过滤后得到', results.length, '条记录');
+          db.close();
+          resolve(results);
+        }
+      };
+      
+      request.onerror = () => {
+        console.error('[DB] 查询失败:', request.error);
+        db.close();
+        reject(request.error);
+      };
+    } catch (error) {
+      console.error('[DB] 查询异常:', error);
+      db.close();
+      reject(error);
+    }
+  });
+}
+
+// 使用示例
+const recentRecords = await getRecordsByCustomFilter(record => {
+  return record.timestamp > Date.now() - 7 * 24 * 60 * 60 * 1000; // 最近7天
+});
+```
+
+### 更新记录
+
+```javascript
+async function updateRecord(id, updates) {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      
+      // 先获取原记录
+      const getRequest = objectStore.get(id);
+      
+      getRequest.onsuccess = () => {
+        const record = getRequest.result;
+        
+        if (!record) {
+          console.error('[DB] 记录不存在:', id);
+          db.close();
+          reject(new Error('Record not found'));
+          return;
+        }
+        
+        // 合并更新
+        const updatedRecord = {
+          ...record,
+          ...updates,
+          updatedAt: Date.now()
+        };
+        
+        const putRequest = objectStore.put(updatedRecord);
+        
+        putRequest.onsuccess = () => {
+          console.log('[DB] 记录已更新:', id);
+          db.close();
+          resolve(updatedRecord);
+        };
+        
+        putRequest.onerror = () => {
+          console.error('[DB] 更新失败:', putRequest.error);
+          db.close();
+          reject(putRequest.error);
+        };
+      };
+      
+      getRequest.onerror = () => {
+        console.error('[DB] 获取记录失败:', getRequest.error);
+        db.close();
+        reject(getRequest.error);
+      };
+    } catch (error) {
+      console.error('[DB] 更新异常:', error);
+      db.close();
+      reject(error);
+    }
+  });
+}
+```
+
+### 删除记录
+
+```javascript
+async function deleteRecord(id) {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const request = objectStore.delete(id);
+      
+      request.onsuccess = () => {
+        console.log('[DB] 记录已删除:', id);
+        db.close();
+        resolve(true);
+      };
+      
+      request.onerror = () => {
+        console.error('[DB] 删除失败:', request.error);
+        db.close();
+        reject(request.error);
+      };
+    } catch (error) {
+      console.error('[DB] 删除异常:', error);
+      db.close();
+      reject(error);
+    }
+  });
+}
+```
+
+### 批量删除
+
+```javascript
+async function deleteRecordsByFilter(filterFn) {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const request = objectStore.openCursor();
+      let deletedCount = 0;
+      
+      request.onsuccess = (event) => {
+        const cursor = event.target.result;
+        
+        if (cursor) {
+          if (filterFn(cursor.value)) {
+            cursor.delete();
+            deletedCount++;
+          }
+          cursor.continue();
+        } else {
+          // 遍历完成
+          console.log('[DB] 已删除', deletedCount, '条记录');
+          db.close();
+          resolve(deletedCount);
+        }
+      };
+      
+      request.onerror = () => {
+        console.error('[DB] 删除失败:', request.error);
+        db.close();
+        reject(request.error);
+      };
+    } catch (error) {
+      console.error('[DB] 删除异常:', error);
+      db.close();
+      reject(error);
+    }
+  });
+}
+
+// 使用示例：删除7天前的记录
+const deletedCount = await deleteRecordsByFilter(record => {
+  return record.timestamp < Date.now() - 7 * 24 * 60 * 60 * 1000;
+});
+```
+
+### 清空所有记录
+
+```javascript
+async function clearAllRecords() {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const request = objectStore.clear();
+      
+      request.onsuccess = () => {
+        console.log('[DB] 所有记录已清空');
+        db.close();
+        resolve(true);
+      };
+      
+      request.onerror = () => {
+        console.error('[DB] 清空失败:', request.error);
+        db.close();
+        reject(request.error);
+      };
+    } catch (error) {
+      console.error('[DB] 清空异常:', error);
+      db.close();
+      reject(error);
+    }
+  });
+}
+```
+
+## 高级模式
+
+### 统计和聚合
+
+```javascript
+async function getRecordCount() {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const request = objectStore.count();
+      
+      request.onsuccess = () => {
+        console.log('[DB] 总记录数:', request.result);
+        db.close();
+        resolve(request.result);
+      };
+      
+      request.onerror = () => {
+        console.error('[DB] 统计失败:', request.error);
+        db.close();
+        reject(request.error);
+      };
+    } catch (error) {
+      console.error('[DB] 统计异常:', error);
+      db.close();
+      reject(error);
+    }
+  });
+}
+```
+
+### 范围查询
+
+```javascript
+async function getRecordsByDateRange(startDate, endDate) {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const index = objectStore.index('date');
+      
+      // 创建范围
+      const range = IDBKeyRange.bound(startDate, endDate);
+      const request = index.getAll(range);
+      
+      request.onsuccess = () => {
+        console.log('[DB] 查询到', request.result.length, '条记录');
+        db.close();
+        resolve(request.result);
+      };
+      
+      request.onerror = () => {
+        console.error('[DB] 查询失败:', request.error);
+        db.close();
+        reject(request.error);
+      };
+    } catch (error) {
+      console.error('[DB] 查询异常:', error);
+      db.close();
+      reject(error);
+    }
+  });
+}
+```
+
+### 批量操作（事务）
+
+```javascript
+async function addMultipleRecords(records) {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      let successCount = 0;
+      let errorCount = 0;
+      
+      // 批量添加
+      records.forEach(record => {
+        const request = objectStore.add({
+          ...record,
+          timestamp: Date.now(),
+          date: new Date().toISOString().split('T')[0]
+        });
+        
+        request.onsuccess = () => {
+          successCount++;
+        };
+        
+        request.onerror = () => {
+          errorCount++;
+          console.error('[DB] 添加记录失败:', request.error);
+        };
+      });
+      
+      // 事务完成
+      transaction.oncomplete = () => {
+        console.log('[DB] 批量添加完成:', successCount, '成功,', errorCount, '失败');
+        db.close();
+        resolve({ success: successCount, failed: errorCount });
+      };
+      
+      transaction.onerror = () => {
+        console.error('[DB] 事务失败:', transaction.error);
+        db.close();
+        reject(transaction.error);
+      };
+    } catch (error) {
+      console.error('[DB] 批量添加异常:', error);
+      db.close();
+      reject(error);
+    }
+  });
+}
+```
+
+## 最佳实践
+
+### 1. 始终关闭数据库连接
+
+✅ **正确**：
+```javascript
+request.onsuccess = () => {
+  // 处理结果
+  db.close(); // 关键！
+  resolve(result);
+};
+
+request.onerror = () => {
+  db.close(); // 错误时也要关闭！
+  reject(error);
+};
+```
+
+### 2. 使用 try-catch 包装
+
+```javascript
+async function dbOperation() {
+  const db = await initDB();
+  
+  return new Promise((resolve, reject) => {
+    try {
+      // 数据库操作
+    } catch (error) {
+      console.error('[DB] 操作异常:', error);
+      db.close(); // 确保关闭
+      reject(error);
+    }
+  });
+}
+```
+
+### 3. 添加有意义的日志
+
+```javascript
+console.log('[DB] 开始添加记录:', data);
+console.log('[DB] 记录已添加, ID:', result);
+console.log('[DB] 查询到', results.length, '条记录');
+```
+
+### 4. 使用索引优化查询
+
+```javascript
+// 为常用查询字段创建索引
+request.onupgradeneeded = (event) => {
+  const db = event.target.result;
+  const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+  
+  // 创建索引
+  objectStore.createIndex('url', 'url', { unique: false });
+  objectStore.createIndex('date', 'date', { unique: false });
+  objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+};
+```
+
+### 5. 数据验证
+
+```javascript
+async function addRecord(data) {
+  // 验证必需字段
+  if (!data.url || !data.title) {
+    throw new Error('缺少必需字段: url 和 title');
+  }
+  
+  // 验证数据类型
+  if (typeof data.url !== 'string') {
+    throw new Error('url 必须是字符串');
+  }
+  
+  // ... 继续数据库操作
+}
+```
+
+## 测试 IndexedDB
+
+参考 [tests/unit/db.test.js](mdc:tests/unit/db.test.js)：
+
+### 使用 fake-indexeddb
+
+```javascript
+const { setupChromeMock, resetChromeMock } = require('../helpers/chrome-mock');
+
+describe('数据库测试', () => {
+  beforeEach(() => {
+    setupChromeMock();
+    // fake-indexeddb 会自动设置
+  });
+  
+  afterEach(async () => {
+    // 清理数据
+    const db = await initDB();
+    await new Promise(resolve => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const request = transaction.objectStore(STORE_NAME).clear();
+      request.onsuccess = () => {
+        db.close();
+        resolve();
+      };
+    });
+    
+    resetChromeMock();
+  });
+  
+  test('应该能够添加记录', async () => {
+    const data = { url: 'https://example.com', title: 'Test' };
+    const id = await addRecord(data);
+    
+    expect(id).toBeDefined();
+    expect(typeof id).toBe('number');
+  });
+  
+  test('应该能够查询记录', async () => {
+    const data = { url: 'https://example.com', title: 'Test' };
+    const id = await addRecord(data);
+    
+    const record = await getRecordById(id);
+    expect(record).toBeDefined();
+    expect(record.url).toBe(data.url);
+  });
+});
+```
+
+## 常见问题
+
+### 问题：数据库版本升级
+
+**解决**：修改 DB_VERSION 并在 onupgradeneeded 中处理
+
+```javascript
+request.onupgradeneeded = (event) => {
+  const db = event.target.result;
+  const oldVersion = event.oldVersion;
+  const newVersion = event.newVersion;
+  
+  if (oldVersion < 1) {
+    // 创建初始结构
+    const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+    objectStore.createIndex('url', 'url', { unique: false });
+  }
+  
+  if (oldVersion < 2) {
+    // 添加新索引
+    const transaction = event.target.transaction;
+    const objectStore = transaction.objectStore(STORE_NAME);
+    objectStore.createIndex('date', 'date', { unique: false });
+  }
+};
+```
+
+### 问题：连接未关闭导致的内存泄漏
+
+**检查**：确保所有代码路径都调用了 `db.close()`
+
+### 问题：structuredClone 错误（测试环境）
+
+**解决**：在 tests/setup.js 中添加 polyfill
+
+参考 [tests/setup.js](mdc:tests/setup.js)：
+```javascript
+if (typeof global.structuredClone === 'undefined') {
+  global.structuredClone = (val) => {
+    return JSON.parse(JSON.stringify(val));
+  };
+}
+```
+
+## 参考文件
+
+- [db.js](mdc:smart-search-extension/db.js) - 数据库实现
+- [tests/unit/db.test.js](mdc:tests/unit/db.test.js) - 单元测试
+- [tests/setup.js](mdc:tests/setup.js) - 测试环境配置
