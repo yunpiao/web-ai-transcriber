@@ -20,8 +20,8 @@ const ENGINE_CONFIG = {
 };
 
 const TIMING = {
-  ELEMENT_CHECK_INTERVAL: 500,  // 元素检查间隔（毫秒）
-  MAX_ATTEMPTS: 20,              // 最大重试次数
+  ELEMENT_CHECK_INTERVAL: 100,  // 元素检查间隔（毫秒）- 更快的响应速度
+  MAX_ATTEMPTS: 50,              // 最大重试次数（5秒超时）
   DEEP_THINKING_DELAY: 1000,     // 深度思考按钮延迟
   DEEP_THINKING_RESPONSE: 300,   // 深度思考响应延迟
   SUBMIT_DELAY: 200,             // 提交延迟
@@ -75,7 +75,7 @@ class ConfigLoader {
     return {
       searchText: textData.searchText,
       skipPromptTemplate: textData.skipPromptTemplate,
-      promptTemplate: enableDeepThinking ? promptTemplate : '',
+      promptTemplate: promptTemplate,  // 始终加载提示词，由 skipPromptTemplate 控制是否使用
       enableDeepThinking
     };
   }
