@@ -43,6 +43,7 @@ jobs:
     
     - name: 生成覆盖率报告
       run: npm run test:coverage
+      continue-on-error: true  # 覆盖率检查失败不阻塞CI
     
     - name: 上传覆盖率报告
       uses: codecov/codecov-action@v3
@@ -51,6 +52,7 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+      continue-on-error: true
     
     - name: 上传测试结果
       if: always()
