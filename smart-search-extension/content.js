@@ -352,39 +352,60 @@ class ContentScriptController {
     
     try {
       // 1. 等待输入框出现
+      console.log('[智能搜索扩展] → 等待输入框:', engineCfg.input);
       const inputBox = await DOMHelper.waitForElement(engineCfg.input);
-      console.log('[智能搜索扩展] 已找到输入框');
+      console.log('[智能搜索扩展] ✓ 已找到输入框，tagName:', inputBox.tagName);
       
       // 2. 处理深度思考功能
-      await handler.handleDeepThinking(config.enableDeepThinking);
+      if (config.enableDeepThinking && engineCfg.deepThinkingButton) {
+        console.log('[智能搜索扩展] → 处理深度思考功能');
+        await handler.handleDeepThinking(config.enableDeepThinking);
+      } else {
+        console.log('[智能搜索扩展] ✓ 跳过深度思考功能');
+      }
       
       // 3. 填充文本
+      console.log('[智能搜索扩展] → 填充文本，长度:', searchText.length);
       DOMHelper.fillInput(inputBox, searchText);
+      console.log('[智能搜索扩展] ✓ 文本已填充');
       
       // 4. 延迟后提交
+      console.log(`[智能搜索扩展] → 等待${TIMING.SUBMIT_DELAY}ms后提交`);
       await DOMHelper.delay(TIMING.SUBMIT_DELAY);
       
       // 5. 尝试点击提交按钮
+      console.log('[智能搜索扩展] → 尝试点击提交按钮:', engineCfg.submit);
       const submitted = DOMHelper.clickSubmit(engineCfg.submit);
-      if (!submitted) {
-        console.error(`[智能搜索扩展] 未找到提交按钮 ('${engineCfg.submit}')`);
-        // 尝试模拟按键
+      if (submitted) {
+        console.log('[智能搜索扩展] ✓ 提交按钮已点击');
+      } else {
+        console.error(`[智能搜索扩展] ✗ 未找到提交按钮 ('${engineCfg.submit}')`);
+        console.log('[智能搜索扩展] → 尝试模拟Enter键');
         DOMHelper.simulateEnterKey(inputBox);
+        console.log('[智能搜索扩展] ✓ Enter键已模拟');
       }
       
       // 6. 失焦输入框
+      console.log(`[智能搜索扩展] → 等待${TIMING.BLUR_DELAY}ms后失焦`);
       await DOMHelper.delay(TIMING.BLUR_DELAY);
       inputBox.blur();
+      console.log('[智能搜索扩展] ✓ 输入框已失焦');
       
       // 7. 处理提交后操作
+      console.log('[智能搜索扩展] → 处理提交后操作');
       await handler.handlePostSubmit();
+      console.log('[智能搜索扩展] ✓ 提交后操作完成');
       
       // 8. 清理临时数据
+      console.log('[智能搜索扩展] → 清理临时数据');
       await ConfigLoader.cleanup();
-      console.log('[智能搜索扩展] 任务完成');
+      console.log('[智能搜索扩展] ✓ 临时数据已清理');
+      
+      console.log('[智能搜索扩展] ✅ 任务完成');
       
     } catch (error) {
-      console.error('[智能搜索扩展] 执行出错:', error);
+      console.error('[智能搜索扩展] ❌ 执行出错:', error);
+      console.error('[智能搜索扩展] 错误堆栈:', error.stack);
     }
   }
 
@@ -392,28 +413,50 @@ class ContentScriptController {
    * 运行主流程
    */
   async run() {
+    console.log('[智能搜索扩展] ========== Content Script 开始执行 ==========');
+    
     // 1. 检查执行状态
+    console.log('[智能搜索扩展] 步骤1: 检查执行状态');
     if (!this.checkExecutionStatus()) {
+      console.log('[智能搜索扩展] 已执行过，退出');
       return;
     }
+    console.log('[智能搜索扩展] ✓ 首次执行，继续');
     
     // 2. 加载配置
+    console.log('[智能搜索扩展] 步骤2: 加载配置');
     const config = await this.loadAndValidateConfig();
     if (!config) {
+      console.log('[智能搜索扩展] 配置无效或无搜索文本，退出');
       return;
     }
+    console.log('[智能搜索扩展] ✓ 配置加载成功:', {
+      hasSearchText: !!config.searchText,
+      skipPromptTemplate: config.skipPromptTemplate,
+      hasPromptTemplate: !!config.promptTemplate,
+      enableDeepThinking: config.enableDeepThinking
+    });
     
     // 3. 获取引擎配置
+    console.log('[智能搜索扩展] 步骤3: 获取引擎配置');
+    console.log('[智能搜索扩展] 当前hostname:', window.location.hostname);
     const engineConfig = this.getEngineConfig();
     if (!engineConfig) {
+      console.error('[智能搜索扩展] 未找到引擎配置，退出');
       return;
     }
+    console.log('[智能搜索扩展] ✓ 引擎配置:', engineConfig.hostname);
     
     // 4. 准备搜索文本
+    console.log('[智能搜索扩展] 步骤4: 准备搜索文本');
     const searchText = this.prepareSearchText(config);
+    console.log('[智能搜索扩展] ✓ 文本长度:', searchText.length);
+    console.log('[智能搜索扩展] ✓ 文本开头:', searchText.substring(0, 50));
     
     // 5. 执行搜索
+    console.log('[智能搜索扩展] 步骤5: 执行搜索流程');
     await this.executeSearch(engineConfig, searchText, config);
+    console.log('[智能搜索扩展] ========== Content Script 执行完成 ==========');
   }
 }
 
