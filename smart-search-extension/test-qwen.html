@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Qwen AI Mock Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    #chat-input {
+      width: 100%;
+      min-height: 120px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: Arial, sans-serif;
+    }
+    #send-message-button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      background-color: #1890ff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #send-message-button:hover {
+      background-color: #40a9ff;
+    }
+    #send-message-button:disabled {
+      background-color: #d9d9d9;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 4px;
+      display: none;
+    }
+    .status.success {
+      background-color: #f6ffed;
+      border: 1px solid #b7eb8f;
+      color: #52c41a;
+      display: block;
+    }
+    .log {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f5f5f5;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: monospace;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Qwen AI 模拟页面（用于测试）</h1>
+  <p>这是一个模拟 chat.qwen.ai 的测试页面</p>
+  
+  <div>
+    <textarea id="chat-input" placeholder="请输入内容..."></textarea>
+  </div>
+  
+  <div>
+    <button id="send-message-button">发送</button>
+  </div>
+  
+  <div class="status" id="status"></div>
+  
+  <div class="log" id="log">
+    <div><strong>日志:</strong></div>
+  </div>
+  
+  <script>
+    // 关键：模拟hostname为chat.qwen.ai
+    try {
+      delete window.location;
+      window.location = {
+        hostname: 'chat.qwen.ai',
+        href: 'https://chat.qwen.ai/',
+        protocol: 'https:',
+        host: 'chat.qwen.ai'
+      };
+    } catch(e) {
+      // 如果delete失败，尝试defineProperty
+      try {
+        Object.defineProperty(window, 'location', {
+          writable: true,
+          value: {
+            hostname: 'chat.qwen.ai',
+            href: 'https://chat.qwen.ai/',
+            protocol: 'https:',
+            host: 'chat.qwen.ai'
+          }
+        });
+      } catch(e2) {
+        console.error('无法设置location:', e2);
+      }
+    }
+    
+    // 模拟Qwen的交互逻辑
+    const input = document.getElementById('chat-input');
+    const button = document.getElementById('send-message-button');
+    const status = document.getElementById('status');
+    const log = document.getElementById('log');
+    
+    // 记录日志
+    function addLog(message) {
+      const time = new Date().toLocaleTimeString();
+      const logEntry = document.createElement('div');
+      logEntry.textContent = `[${time}] ${message}`;
+      log.appendChild(logEntry);
+      log.scrollTop = log.scrollHeight;
+    }
+    
+    // 页面加载完成
+    addLog('✅ 页面加载完成');
+    addLog(`📍 当前hostname: ${window.location.hostname}`);
+    
+    // 监听输入框变化
+    input.addEventListener('input', (e) => {
+      addLog(`📝 输入框内容变化: 长度=${e.target.value.length}`);
+      if (e.target.value.length > 0) {
+        button.disabled = false;
+      }
+    });
+    
+    // 监听发送按钮点击
+    button.addEventListener('click', () => {
+      const content = input.value;
+      addLog(`🚀 发送按钮被点击！内容长度: ${content.length}`);
+      addLog(`📄 内容开头: ${content.substring(0, 100)}`);
+      
+      // 显示状态
+      status.className = 'status success';
+      status.textContent = `✅ 已发送内容（${content.length}字符）`;
+      
+      // 清空输入框（模拟实际行为）
+      setTimeout(() => {
+        input.value = '';
+        button.disabled = true;
+        addLog('🧹 输入框已清空');
+      }, 500);
+    });
+    
+    // 初始状态
+    button.disabled = input.value.length === 0;
+    
+    // 记录页面加载时间
+    window.pageLoadTime = Date.now();
+    addLog(`⏱️  页面加载时间: ${window.pageLoadTime}`);
+  </script>
+</body>
+</html>
+
