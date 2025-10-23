@@ -237,18 +237,35 @@ describe('历史记录页面E2E测试', () => {
     let cardCount = await page.$$eval('.history-card', cards => cards.length);
     expect(cardCount).toBe(2);
     
+    // 展开筛选器
+    await page.evaluate(() => {
+      const details = document.querySelector('#filter-panel details');
+      if (details && !details.open) {
+        const summary = details.querySelector('summary');
+        if (summary) summary.click();
+      }
+    });
+    await wait(500);
+    
     // 点击今天的日期进行筛选
-    const todayBtn = await page.$('.calendar-day.today:not(.disabled)');
-    if (todayBtn) {
-      await todayBtn.click();
+    const todayClicked = await page.evaluate(() => {
+      const todayBtn = document.querySelector('.calendar-day.today:not(.disabled)');
+      if (todayBtn) {
+        todayBtn.click();
+        return true;
+      }
+      return false;
+    });
+    
+    if (todayClicked) {
       await wait(1000);
       
       // 应该只显示1条记录
       cardCount = await page.$$eval('.history-card', cards => cards.length);
       expect(cardCount).toBe(1);
       
-      // 点击清除筛选按钮
-      await page.click('#clear-filter');
+      // 点击清除筛选按钮（使用横幅上的按钮）
+      await page.click('#clear-filter-banner');
       await wait(1000);
       
       // 应该重新显示所有2条记录
@@ -304,6 +321,23 @@ describe('历史记录页面E2E测试', () => {
     const hoursSection = await page.$('.hours-section');
     expect(hoursSection).not.toBeNull();
     
+    // 展开筛选器
+    await page.evaluate(() => {
+      const details = document.querySelector('#filter-panel details');
+      if (details && !details.open) {
+        const summary = details.querySelector('summary');
+        if (summary) summary.click();
+      }
+    });
+    await wait(500);
+    
+    // 先选择一个日期以激活小时选择器
+    await page.evaluate(() => {
+      const activeDay = document.querySelector('.calendar-day:not(.disabled):not(.other-month)');
+      if (activeDay) activeDay.click();
+    });
+    await wait(500);
+    
     // 检查是否生成24个小时按钮
     const hourButtons = await page.$$('.hour-btn');
     expect(hourButtons.length).toBe(24);
@@ -316,11 +350,27 @@ describe('历史记录页面E2E测试', () => {
     
     await wait(1000);
     
-    // 找到一个非disabled的日期并点击
-    const activeDay = await page.$('.calendar-day:not(.disabled):not(.other-month)');
-    expect(activeDay).not.toBeNull();
+    // 展开筛选器
+    await page.evaluate(() => {
+      const details = document.querySelector('#filter-panel details');
+      if (details && !details.open) {
+        const summary = details.querySelector('summary');
+        if (summary) summary.click();
+      }
+    });
+    await wait(500);
     
-    await activeDay.click();
+    // 找到一个非disabled的日期并点击
+    const clicked = await page.evaluate(() => {
+      const activeDay = document.querySelector('.calendar-day:not(.disabled):not(.other-month)');
+      if (activeDay) {
+        activeDay.click();
+        return true;
+      }
+      return false;
+    });
+    
+    expect(clicked).toBe(true);
     await wait(500);
     
     // 检查是否有选中状态
@@ -335,18 +385,34 @@ describe('历史记录页面E2E测试', () => {
     
     await wait(1000);
     
+    // 展开筛选器
+    await page.evaluate(() => {
+      const details = document.querySelector('#filter-panel details');
+      if (details && !details.open) {
+        const summary = details.querySelector('summary');
+        if (summary) summary.click();
+      }
+    });
+    await wait(500);
+    
     // 先选择一个日期
-    const activeDay = await page.$('.calendar-day:not(.disabled):not(.other-month)');
-    if (activeDay) {
-      await activeDay.click();
-      await wait(500);
-    }
+    await page.evaluate(() => {
+      const activeDay = document.querySelector('.calendar-day:not(.disabled):not(.other-month)');
+      if (activeDay) activeDay.click();
+    });
+    await wait(500);
     
     // 点击第一个小时按钮
-    const firstHour = await page.$('.hour-btn[data-hour="0"]');
-    expect(firstHour).not.toBeNull();
+    const firstHourClicked = await page.evaluate(() => {
+      const firstHour = document.querySelector('.hour-btn[data-hour="0"]');
+      if (firstHour) {
+        firstHour.click();
+        return true;
+      }
+      return false;
+    });
     
-    await firstHour.click();
+    expect(firstHourClicked).toBe(true);
     await wait(500);
     
     // 检查是否有选中状态
@@ -361,18 +427,34 @@ describe('历史记录页面E2E测试', () => {
     
     await wait(1000);
     
+    // 展开筛选器
+    await page.evaluate(() => {
+      const details = document.querySelector('#filter-panel details');
+      if (details && !details.open) {
+        const summary = details.querySelector('summary');
+        if (summary) summary.click();
+      }
+    });
+    await wait(500);
+    
     // 获取初始月份
     const initialMonth = await page.$eval('#current-month', el => el.textContent);
     
-    // 点击下一月
-    await page.click('#next-month');
+    // 先切换到上一月（避免下一月按钮被禁用）
+    await page.evaluate(() => {
+      const prevBtn = document.getElementById('prev-month');
+      if (prevBtn) prevBtn.click();
+    });
     await wait(500);
     
-    const newMonth = await page.$eval('#current-month', el => el.textContent);
-    expect(newMonth).not.toBe(initialMonth);
+    const prevMonth = await page.$eval('#current-month', el => el.textContent);
+    expect(prevMonth).not.toBe(initialMonth);
     
-    // 点击上一月
-    await page.click('#prev-month');
+    // 切换回来
+    await page.evaluate(() => {
+      const nextBtn = document.getElementById('next-month');
+      if (nextBtn && !nextBtn.disabled) nextBtn.click();
+    });
     await wait(500);
     
     const backMonth = await page.$eval('#current-month', el => el.textContent);
@@ -386,19 +468,29 @@ describe('历史记录页面E2E测试', () => {
     
     await wait(1000);
     
+    // 展开筛选器
+    await page.evaluate(() => {
+      const details = document.querySelector('#filter-panel details');
+      if (details && !details.open) {
+        const summary = details.querySelector('summary');
+        if (summary) summary.click();
+      }
+    });
+    await wait(500);
+    
     // 选择一个日期
-    const activeDay = await page.$('.calendar-day:not(.disabled):not(.other-month)');
-    if (activeDay) {
-      await activeDay.click();
-      await wait(500);
-    }
+    await page.evaluate(() => {
+      const activeDay = document.querySelector('.calendar-day:not(.disabled):not(.other-month)');
+      if (activeDay) activeDay.click();
+    });
+    await wait(500);
     
     // 输入搜索
     await page.type('#search-input', 'test');
     await wait(500);
     
-    // 点击清除筛选
-    await page.click('#clear-filter');
+    // 点击清除筛选（使用横幅上的按钮）
+    await page.click('#clear-filter-banner');
     await wait(500);
     
     // 验证筛选已清除
@@ -474,10 +566,27 @@ describe('历史记录页面E2E测试', () => {
     let cardCount = await page.$$eval('.history-card', cards => cards.length);
     expect(cardCount).toBe(3);
     
+    // 展开筛选器
+    await page.evaluate(() => {
+      const details = document.querySelector('#filter-panel details');
+      if (details && !details.open) {
+        const summary = details.querySelector('summary');
+        if (summary) summary.click();
+      }
+    });
+    await wait(500);
+    
     // 点击今天的日期
-    const todayBtn = await page.$('.calendar-day.today:not(.disabled)');
-    if (todayBtn) {
-      await todayBtn.click();
+    const todayClicked = await page.evaluate(() => {
+      const todayBtn = document.querySelector('.calendar-day.today:not(.disabled)');
+      if (todayBtn) {
+        todayBtn.click();
+        return true;
+      }
+      return false;
+    });
+    
+    if (todayClicked) {
       await wait(1000);
       
       // 应该只显示今天的2条记录

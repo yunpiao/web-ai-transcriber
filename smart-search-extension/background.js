@@ -29,7 +29,12 @@ async function handleSearch(tab) {
     if (!pageText) return;
     
     // 2. 将抓取到的文本临时存入 storage
-    await chrome.storage.local.set({ 'tempSearchText': pageText });
+    // 注意：必须明确设置 skipPromptTemplate: false，否则如果用户之前使用过总结功能，
+    // skipPromptTemplate 会保留为 true，导致转写功能也跳过提示词模板
+    await chrome.storage.local.set({ 
+      'tempSearchText': pageText,
+      'skipPromptTemplate': false
+    });
     
     // 3. 从 storage 读取用户配置
     const settings = await chrome.storage.sync.get({
