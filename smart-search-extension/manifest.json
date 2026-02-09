@@ -22,9 +22,7 @@
   "permissions": [
     "scripting",
     "contextMenus",
-    "storage",
-    "activeTab",
-    "tabs"
+    "storage"
   ],
   "host_permissions": [
     "https://*/*",
