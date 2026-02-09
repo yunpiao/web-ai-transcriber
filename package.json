@@ -14,7 +14,8 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "test:ci:all": "npm run test:core && npm run test:e2e",
-    "test:core": "npm run test:unit && npm run test:integration"
+    "test:core": "npm run test:unit && npm run test:integration",
+    "version": "node -e \"const fs=require('fs');const p='./smart-search-extension/manifest.json';const m=JSON.parse(fs.readFileSync(p));m.version=require('./package.json').version;fs.writeFileSync(p,JSON.stringify(m,null,2)+'\\n')\" && git add smart-search-extension/manifest.json"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.268",
