@@ -16,7 +16,7 @@
     "test:ci:all": "npm run test:core && npm run test:e2e",
     "test:core": "npm run test:unit && npm run test:integration",
     "version": "node -e \"const fs=require('fs');const p='./smart-search-extension/manifest.json';const m=JSON.parse(fs.readFileSync(p));m.version=require('./package.json').version;fs.writeFileSync(p,JSON.stringify(m,null,2)+'\\n')\" && git add smart-search-extension/manifest.json",
-    "postversion": "git push && git push --tags"
+    "postversion": "git push && git push origin v$npm_package_version"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.268",
