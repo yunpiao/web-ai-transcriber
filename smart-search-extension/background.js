@@ -13,7 +13,7 @@ const DB_CONFIG = {
 };
 
 const DEFAULT_SETTINGS = {
-  favoriteEngine: 'qwen',
+  favoriteEngine: 'gemini',
   promptTemplate: null,
   enabledeepThinking: false,
   useCurrentTab: false,
