@@ -1,6 +1,6 @@
 {
   "name": "smart-search-extension",
-  "version": "4.9.1",
+  "version": "4.9.2",
   "description": "Chrome extension for AI-powered web content transcription with browsing history tracking",
   "scripts": {
     "test": "npm run test:core",
