@@ -158,4 +158,5 @@
 
 ## ⚠️ 人工备注 (Manual Notes)
 
+- **发版流程**：commit 前先执行 `npm version patch`（或 `minor`/`major`），会自动同步 manifest.json 版本、commit、tag、push，触发 CI 打包发布。禁止手动改版本号。
 - _(开发者可在此处手动添加 AI 无法通过代码分析得出的业务背景或长期记忆，AI 请勿覆盖此区域内容)_

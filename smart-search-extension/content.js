@@ -5,8 +5,8 @@ const ENGINE_CONFIG = {
     submit: 'button.send-button, div.send-button-container button',
   },
   'chat.qwen.ai': {
-    input: '#chat-input',
-    submit: '#send-message-button',
+    input: 'textarea.message-input-textarea',
+    submit: 'button.send-button',
     deepThinkingButton: 'button.ThinkingButton,button.chat-input-feature-btn'
   },
   'chat.deepseek.com': {
