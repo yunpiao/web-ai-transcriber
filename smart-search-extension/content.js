@@ -14,8 +14,8 @@ const ENGINE_CONFIG = {
     submit: 'button#send-message-button',
   },
   'aistudio.google.com': {
-    input: 'textarea.textarea, textarea[aria-label*="Type something"]',
-    submit: 'button[aria-label="Run"], button.run-button',
+    input: 'textarea.textarea, textarea[aria-label="Enter a prompt"]',
+    submit: 'button.ctrl-enter-submits, button[aria-label="Run"], button.run-button',
   }
 };
 
@@ -334,13 +334,16 @@ class ContentScriptController {
    */
   prepareSearchText(config) {
     let { searchText, promptTemplate, skipPromptTemplate } = config;
-    
+
+    // 原始文本重复一遍，强化 AI 对原文的关注
+    const doubledText = `${searchText}\n${searchText}`;
+
     // 如果不跳过提示词，则添加提示词模板
     if (!skipPromptTemplate && promptTemplate) {
-      searchText = `${promptTemplate}${searchText}`;
+      return `${promptTemplate}${doubledText}`;
     }
-    
-    return searchText;
+
+    return doubledText;
   }
 
   /**
@@ -369,9 +372,10 @@ class ContentScriptController {
       DOMHelper.fillInput(inputBox, searchText);
       console.log('[智能搜索扩展] ✓ 文本已填充');
       
-      // 4. 延迟后提交
-      console.log(`[智能搜索扩展] → 等待${TIMING.SUBMIT_DELAY}ms后提交`);
-      await DOMHelper.delay(TIMING.SUBMIT_DELAY);
+      // 4. 延迟后提交（aistudio 输入框太宽，需要更长延迟避免出错）
+      const submitDelay = hostname === 'aistudio.google.com' ? 2000 : TIMING.SUBMIT_DELAY;
+      console.log(`[智能搜索扩展] → 等待${submitDelay}ms后提交`);
+      await DOMHelper.delay(submitDelay);
       
       // 5. 尝试点击提交按钮
       console.log('[智能搜索扩展] → 尝试点击提交按钮:', engineCfg.submit);
