@@ -2,9 +2,8 @@ name: Build and Package
 
 on:
   push:
-    branches:
-      - master  # 每次提交到master分支时触发
-      - main    # 同时支持main分支
+    tags:
+      - 'v*'  # 只在 tag push 时触发（npm version 自动创建）
 
 # 添加明确的权限声明
 permissions:
@@ -13,40 +12,33 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Set up environment
         run: |
           echo "TIMESTAMP=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
           echo "ZIP_NAME=AI_${GITHUB_SHA::7}_$(date +'%Y%m%d').zip" >> $GITHUB_ENV
-          # 提取版本号
-          VERSION=$(grep '"version"' smart-search-extension/manifest.json | cut -d'"' -f4)
+          # 从 tag 名提取版本号
+          VERSION=${GITHUB_REF_NAME#v}
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "TAG_NAME=v${VERSION}" >> $GITHUB_ENV
-      
+          echo "TAG_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
       - name: Pack Extension
         run: |
           cd smart-search-extension
           zip -r "../${{ env.ZIP_NAME }}" * -x "*.DS_Store" "*.tmp" "*.log" "STORE_DESCRIPTION.txt"
           cd ..
           echo "扩展已打包到 ${{ env.ZIP_NAME }}"
-      
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: extension-package
           path: ${{ env.ZIP_NAME }}
           retention-days: 30
-          
-      - name: Create git tag
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git tag -f "${{ env.TAG_NAME }}"
-          git push origin "${{ env.TAG_NAME }}" -f
 
       - name: Create or Update Release
         uses: softprops/action-gh-release@v2
@@ -58,7 +50,6 @@ jobs:
 
             📅 构建时间: ${{ env.TIMESTAMP }}
             🔗 提交: ${{ github.sha }}
-            📝 ${{ github.event.head_commit.message }}
 
             ### 安装方法
             1. 下载附件中的 zip 文件
