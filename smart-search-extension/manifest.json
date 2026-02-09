@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "网页 AI 转写器",
-  "version": "4.9.0",
+  "version": "4.9.1",
   "description": "通过右键菜单或点击扩展图标，使用AI服务转写和优化页面文本。支持浏览历史记录和时长追踪。",
   "options_page": "options.html",
   "action": {
